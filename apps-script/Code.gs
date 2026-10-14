@@ -4,7 +4,7 @@
  *
  * วิธีติดตั้ง (ทำครั้งเดียว)
  * 1) เปิด Google Sheet ใหม่ → ส่วนขยาย → Apps Script → วางโค้ดนี้ทั้งหมดแทนของเดิม → บันทึก
- * 2) เลือกฟังก์ชัน setup แล้วกด "เรียกใช้" → อนุญาตสิทธิ์ → ดู "บันทึกการดำเนินการ" จะเห็นรหัสผู้ดูแล
+ * 2) เลือกฟังก์ชัน setup แล้วกด "เรียกใช้" → อนุญาตสิทธิ์ (รหัสผู้ดูแลเริ่มต้นคือ admin0)
  * 3) การทำให้ใช้งานได้ → การทำให้ใช้งานได้รายการใหม่ → ประเภท "เว็บแอป"
  *      ดำเนินการในฐานะ: ฉัน   |   ผู้มีสิทธิ์เข้าถึง: ทุกคน
  *    → คัดลอก URL ที่ลงท้ายด้วย /exec ไปใส่ในไฟล์ config.js ของเว็บไซต์
@@ -14,6 +14,7 @@
  *   VIEW_PASSWORD  = (ไม่บังคับ) รหัสสำหรับเปิดดู ถ้าไม่ตั้ง ทุกคนที่มีลิงก์ดูได้
  */
 
+const DEFAULT_ADMIN_PASSWORD = "admin0"; // รหัสผู้ดูแลเริ่มต้น ใช้ตอนกด setup ครั้งแรก (เปลี่ยนภายหลังได้ที่คุณสมบัติของสคริปต์)
 const DATA_SHEET = "_data";
 const COLLECTIONS = ["staff", "years", "indicators", "tasks", "settings"];
 const STATUS_LABEL = { on: "ส่งครบ ตรงเวลา", partial: "ส่งไม่ครบ/ไม่ตามกำหนด", late: "ส่งล่าช้า", none: "ละเลย/ไม่ส่ง" };
@@ -48,9 +49,7 @@ const STAFF = [
 /* ---------------- ติดตั้งครั้งแรก ---------------- */
 function setup() {
   const props = PropertiesService.getScriptProperties();
-  if (!props.getProperty("ADMIN_PASSWORD")) {
-    props.setProperty("ADMIN_PASSWORD", "nfe" + Math.floor(100000 + Math.random() * 900000));
-  }
+  if (!props.getProperty("ADMIN_PASSWORD")) props.setProperty("ADMIN_PASSWORD", DEFAULT_ADMIN_PASSWORD);
   const all = loadAll_().data;
   const ops = [];
   if (!Object.keys(all.staff || {}).length) {
