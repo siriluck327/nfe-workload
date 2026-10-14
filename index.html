@@ -258,6 +258,9 @@ table.std tbody tr:last-child td{border-bottom:0}
 .gmx td.gc{text-align:center;font-variant-numeric:tabular-nums}
 .gmx td.gc b{font-size:15px}
 .gmx td.gc small{display:block;font-size:11px;color:var(--muted)}
+.btn.line{background:#06c755;border-color:#06c755;color:#fff;font-weight:600}
+.btn.line:hover{background:#05b14c;border-color:#05b14c}
+#lineText{font-family:var(--f-body);font-size:14px;line-height:1.6;min-height:280px}
 /* roles */
 .role{display:inline-flex;gap:6px;align-items:center;font-size:13px;margin-right:6px}
 .role .badge{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:2px 10px;font-weight:600}
@@ -631,7 +634,7 @@ function viewReport(){
     <div class="tile"><div class="k">ยังไม่ได้รับมอบหมาย</div><div class="v">${zero} <small>คน</small></div></div>
     <div class="tile"><div class="k">ประเมินแล้ว</div><div class="v">${assignments?fmt(evaluated/assignments*100):0}<small>%</small></div></div>
   </div>
-  <div class="bar"><h2 class="grow">ภาระงานรายบุคคล ปีงบประมาณ ${esc(S.fy)}${S.group?" · "+esc(S.group):""}</h2>${filterBar('<button class="btn" id="csv" type="button">ดาวน์โหลด CSV</button>')}</div>
+  <div class="bar"><h2 class="grow">ภาระงานรายบุคคล ปีงบประมาณ ${esc(S.fy)}${S.group?" · "+esc(S.group):""}</h2>${filterBar('<button class="btn line" data-line="summary" type="button">ส่งสรุปไป LINE</button><button class="btn" id="csv" type="button">ดาวน์โหลด CSV</button>')}</div>
   <div class="tablebox"><table class="std">
     <thead><tr>${th("order","ที่","num")}${th("name","ชื่อ-สกุล / ตำแหน่ง")}${th("tasks","จำนวนงาน")}${th("nInd","ตัวชี้วัด","num")}
     ${th("on","ครบ ตรงเวลา","num")}${th("partial","ไม่ครบ/ไม่ตามกำหนด","num")}${th("late","ล่าช้า","num")}${th("none","ไม่ส่ง","num")}${th("wait","รอประเมิน","num")}
@@ -659,6 +662,7 @@ function viewTasks(){
   const all = visTasks(); const cnt={unassigned:0,incomplete:0,done:0}; all.forEach(t=>cnt[taskProg(t).state]++);
   const fchip=(k,l,n)=>`<button type="button" class="gchip" data-tfilter="${k}" aria-pressed="${S.taskFilter===k}">${l} <span class="n">${n}</span></button>`;
   const head = `<div class="bar" style="margin-top:14px"><h2 class="grow">งานและผู้รับผิดชอบ${S.group?" · "+esc(S.group):""}</h2>
+    <button type="button" class="btn sm line" data-line="summary">ส่งสรุปไป LINE</button>
     ${S.canEdit?'<button type="button" class="btn sm" data-tab="import">นำเข้าจากไฟล์</button>':""}</div>
     <div class="chips" style="margin-bottom:14px">${fchip("","ทั้งหมด",all.length)}${fchip("incomplete","ยังส่งไม่ครบ",cnt.incomplete)}${fchip("done","ส่งครบแล้ว",cnt.done)}${fchip("unassigned","ยังไม่ระบุผู้รับผิดชอบ",cnt.unassigned)}</div>`;
   if(!inds.length) return addForm + head + `<div class="notice">${S.group?"กลุ่มงาน “"+esc(S.group)+"” ":""}ปีงบประมาณ ${esc(S.fy)} ยังไม่มีตัวชี้วัดย่อย${S.canEdit?" เริ่มจากเพิ่มตัวชี้วัด หรือนำเข้าจากไฟล์ แล้วกด “+ เพิ่มงาน” และเลือกผู้รับผิดชอบของแต่ละงาน":""}</div>`;
@@ -670,7 +674,7 @@ function viewTasks(){
     const people = a.map(id=>{ const s=staffById(id); const k=r[id]&&r[id].status;
       return `<button type="button" class="pchip ${k?"k-"+k:"k-wait"}" data-cell="${esc("t:"+t.id+"|"+id)}" data-tip="${esc(id+"|"+t.id)}">${esc(shortName(s?.name||"(ไม่พบรายชื่อ)"))}<b>${k?fmtScore(scoreOf(k)):"รอ"}</b></button>`; }).join("");
     return `<div class="task2"><div class="t-top"><div class="t-main" data-task="${esc(t.id)}" tabindex="0"><div class="tn">${esc(t.name)}</div>
-        <div class="tm">กำหนดส่ง ${thDate(t.due)}${p.n?` · ผู้รับผิดชอบ ${p.n} คน · ส่งแล้ว ${p.sub}/${p.n}`:""}</div></div>${badge}</div>
+        <div class="tm">กำหนดส่ง ${thDate(t.due)}${p.n?` · ผู้รับผิดชอบ ${p.n} คน · ส่งแล้ว ${p.sub}/${p.n}`:""}</div></div><div style="display:flex;gap:6px;align-items:center">${badge}<button type="button" class="btn sm line" data-line="task:${esc(t.id)}">ส่งไป LINE</button></div></div>
       ${p.n?`<div class="prog" aria-hidden="true"><span style="width:${p.sub/p.n*100}%"></span></div>`:""}
       <div class="people">${people}${S.db?`<button type="button" class="btn sm ${p.n?"ghost":"pri"}" data-assign="${esc(t.id)}">${p.n?"+ เพิ่ม/แก้ไขผู้รับผิดชอบ":"+ เลือกผู้รับผิดชอบ"}</button>`:""}</div></div>`; };
   const block = (ind, list) => `<section class="ind">
@@ -756,6 +760,51 @@ document.addEventListener("submit", async e=>{
     p.busy=false; p.edit=null; p.rmFiles=[]; renderPanel(); toast("บันทึกเอกสารแล้ว"+(skipped.length?` · แนบไม่ได้: ${skipped.join(", ")}`:""));
   }catch(err){ p.busy=false; renderPanel(); fail(err); }
 }, true);
+
+/* ---------- LINE messages ---------- */
+const ST_ICON={on:"✅",partial:"🟡",late:"🕒",none:"❌"};
+const siteUrl=()=>location.href.split("#")[0];
+const fullDate=d=>{ if(!d) return "ไม่กำหนด"; const x=new Date(d+"T00:00:00"); return isNaN(x)?d:x.toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"}); };
+function personLine(t,id){ const s=staffById(id); const k=((t.results||{})[id]||{}).status; return `${k?ST_ICON[k]:"⏳"} ${shortName(s?.name||"")} – ${k?SHORT[k]:"รอส่ง"}`; }
+function lineTask(t){
+  const i=indById(t.indicatorId); const p=taskProg(t); const d=i&&(i.docs||[]).slice(-1)[0];
+  const L=[`📌 ${t.name}`, `กลุ่มงาน: ${groupOfInd(i)}`];
+  if(i && (i.code||i.name) && i.name!==GENERAL) L.push(`ตัวชี้วัด: ${[i.code,i.name].filter(Boolean).join(" ")}`);
+  if(d) L.push("ต้นเรื่อง: "+[d.source, d.refNo&&"ที่ "+d.refNo, d.date&&"ลว. "+fullDate(d.date), d.subject&&"เรื่อง "+d.subject].filter(Boolean).join(" "));
+  L.push(`กำหนดส่ง: ${fullDate(t.due)}${p.overdue?" (เลยกำหนดแล้ว)":""}`);
+  if(t.note) L.push(`รายละเอียด: ${t.note}`);
+  L.push("", p.n? `ผู้รับผิดชอบ ${p.n} คน · ส่งแล้ว ${p.sub}/${p.n}` : "ยังไม่ระบุผู้รับผิดชอบ");
+  (t.assignees||[]).forEach(id=>L.push(personLine(t,id)));
+  L.push("", "🔗 "+siteUrl()); return L.join("\n");
+}
+function linePerson(id){
+  const s=staffById(id); const st=personStats(visTasks())[id];
+  const L=[`👤 งานของ ${s.name}`, `ปีงบประมาณ ${S.fy}${S.group?" · "+S.group:""}`, `รับผิดชอบ ${st.tasks} งาน · ${st.nInd} ตัวชี้วัด · คะแนนรวม ${fmtScore(st.score)}`];
+  const byG={}; st.list.forEach(({t})=>{ const g=groupOfInd(indById(t.indicatorId)); (byG[g]=byG[g]||[]).push(t); });
+  Object.entries(byG).forEach(([g,ts])=>{ L.push("", `【${g}】`); sortTasks(ts).forEach(t=>{ const k=((t.results||{})[id]||{}).status; L.push(`${k?ST_ICON[k]:"⏳"} ${tlabel(t)} – ${t.due?"ส่ง "+fullDate(t.due):"ไม่กำหนดส่ง"}${k?" ("+SHORT[k]+")":""}`); }); });
+  if(!st.tasks) L.push("", "ยังไม่ได้รับมอบหมายงาน");
+  L.push("", "🔗 "+siteUrl()); return L.join("\n");
+}
+const tlabel = t => { const i=indById(t.indicatorId); return t.name+(i&&i.code?` [${i.code}]`:""); };
+function lineSummary(){
+  const tasks=visTasks(); const today=todayISO(); const in7=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+  const cnt={unassigned:0,incomplete:0,done:0}; tasks.forEach(t=>cnt[taskProg(t).state]++);
+  const pending=t=>(t.assignees||[]).filter(id=>{ const k=((t.results||{})[id]||{}).status; return !k||k==="none"; }).map(id=>shortName(staffById(id)?.name||"").split(" ")[0]);
+  const L=[`📊 สรุปงาน${S.group?" "+S.group:"ทุกกลุ่มงาน"} ปีงบประมาณ ${S.fy}`, `ข้อมูล ณ ${fullDate(today)}`, "",
+    `งานทั้งหมด ${tasks.length} งาน`, `✅ ส่งครบแล้ว ${cnt.done} · ⏳ ยังส่งไม่ครบ ${cnt.incomplete} · ❔ ยังไม่ระบุคน ${cnt.unassigned}`];
+  const over=sortTasks(tasks.filter(t=>taskProg(t).overdue)), soon=sortTasks(tasks.filter(t=>taskProg(t).state==="incomplete" && t.due && t.due>=today && t.due<=in7));
+  if(over.length){ L.push("", "⚠️ เลยกำหนดแล้ว ยังส่งไม่ครบ"); over.forEach(t=>L.push(`• ${tlabel(t)} (${fullDate(t.due)}) ยังไม่ส่ง: ${pending(t).join(", ")}`)); }
+  if(soon.length){ L.push("", "📅 ครบกำหนดภายใน 7 วัน"); soon.forEach(t=>L.push(`• ${tlabel(t)} (${fullDate(t.due)}) ยังไม่ส่ง: ${pending(t).join(", ")}`)); }
+  const un=tasks.filter(t=>!(t.assignees||[]).length); if(un.length){ L.push("", "❔ ยังไม่ระบุผู้รับผิดชอบ"); sortTasks(un).forEach(t=>L.push(`• ${tlabel(t)}`)); }
+  L.push("", "สรุปรายหัวข้อ"); topicsOf(tasks).forEach(tp=>{ let n=0,sub=0; tp.list.forEach(t=>{ const p=taskProg(t); n+=p.n; sub+=p.sub; }); L.push(`• ${tp.name}: ส่งแล้ว ${sub}/${n} คน`); });
+  L.push("", "🔗 "+siteUrl()); return L.join("\n");
+}
+document.addEventListener("click", async e=>{ const b=e.target.closest?.("[data-line]"); if(b){ e.stopPropagation(); const v=b.dataset.line; let text="";
+    if(v==="summary") text=lineSummary(); else if(v.startsWith("task:")){ const t=S.tasks.find(x=>x.id===v.slice(5)); if(t) text=lineTask(t); } else if(v.startsWith("person:")) text=linePerson(v.slice(7));
+    if(text){ S.pop=null; S.assignPop=null; renderAssign(); openPanel({type:"line", text}); } return; }
+  if(e.target.id==="lineCopy"){ const ta=$("#lineText"); try{ await navigator.clipboard.writeText(ta.value); toast("คัดลอกแล้ว นำไปวางใน LINE ได้เลย"); }catch(_){ ta.select(); document.execCommand&&document.execCommand("copy"); toast("คัดลอกแล้ว"); } }
+}, true);
+document.addEventListener("input", e=>{ if(e.target.id==="lineText"){ const p=S.panel; if(p&&p.type==="line"){ p.text=e.target.value; const a=$("#lineGo"); if(a) a.href="https://line.me/R/share?text="+encodeURIComponent(p.text.slice(0,4500)); } } });
 
 /* ---------- quick add task ---------- */
 const GENERAL="งานทั่วไป";
@@ -1107,6 +1156,13 @@ function renderPanel(){
   else if(p.type==="staff"){ title = p.isNew?"เพิ่มบุคลากร":"แก้ไขบุคลากร"; body=panelStaff(p); }
   else if(p.type==="ind"){ title="แก้ไขตัวชี้วัด"; body=panelInd(p); }
   else if(p.type==="docs"){ title="เอกสารและต้นเรื่องของตัวชี้วัด"; body=panelDocs(p); }
+  else if(p.type==="line"){ title="ส่งข้อความไป LINE"; const url="https://line.me/R/share?text="+encodeURIComponent(p.text.slice(0,4500));
+    body=`<p class="mini" style="margin:0 0 8px">ตรวจหรือแก้ข้อความได้ แล้วกด “เปิด LINE เพื่อส่ง” → เลือกกลุ่มไลน์ของ สกร. → กดส่ง</p>
+    <textarea id="lineText">${esc(p.text)}</textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <a class="btn line" id="lineGo" href="${esc(url)}" target="_blank" rel="noopener">เปิด LINE เพื่อส่ง</a>
+      <button type="button" class="btn" id="lineCopy">คัดลอกข้อความ</button></div>
+    <p class="mini">ใช้บนคอมพิวเตอร์แล้ว LINE ไม่เปิด: กด “คัดลอกข้อความ” แล้ววางในห้องแชต LINE ได้เลย${p.text.length>4500?" · ข้อความยาวมาก ปุ่มเปิด LINE จะส่งเฉพาะส่วนต้น ให้ใช้วิธีคัดลอกแทน":""}</p>`; }
   else if(p.type==="login"){ title="เข้าสู่ระบบผู้ดูแล"; body=`<form id="loginForm" style="max-width:380px"><label class="field"><span>รหัสผู้ดูแลระบบ</span><input type="password" id="adminPass" required autocomplete="current-password"></label>
     ${p.err?`<p class="hint" style="font-size:14px">${esc(p.err)}</p>`:""}<button class="btn pri" type="submit" ${p.busy?"disabled":""}>${p.busy?"กำลังตรวจสอบ…":"เข้าสู่ระบบ"}</button>
     <p class="mini">รหัสอยู่ใน Apps Script → การตั้งค่าโปรเจ็กต์ → คุณสมบัติของสคริปต์ (ADMIN_PASSWORD) · เครื่องนี้จะจำการเข้าสู่ระบบไว้จนกว่าจะกด “ออกจากระบบ”</p></form>`; }
@@ -1161,7 +1217,7 @@ function panelPerson(id){
     const x=STATUS.find(s=>s.k===r.status);
     return `<tr class="click" data-task="${esc(t.id)}"><td><div class="nm">${esc(t.name)}</div><div class="pos">${esc(indById(t.indicatorId)?.code||"")} · กำหนด ${thDate(t.due)}${r.date?" · ส่ง "+thDate(r.date):""}</div></td>
       <td>${x?`<span class="st st-${x.k}">${x.label}</span>`:'<span class="st st-wait">รอประเมิน</span>'}</td><td class="num">${x?fmtScore(scoreOf(x.k)):"—"}</td></tr>`; }).join("");
-  return `<p class="pos" style="margin:0 0 14px">${esc(st.s.position||"")} · ปีงบประมาณ ${esc(S.fy)}${S.group?" · "+esc(S.group):" · ทุกกลุ่มงาน"}</p>
+  return `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 14px"><p class="pos" style="margin:0">${esc(st.s.position||"")} · ปีงบประมาณ ${esc(S.fy)}${S.group?" · "+esc(S.group):" · ทุกกลุ่มงาน"}</p><button type="button" class="btn sm line" data-line="person:${esc(id)}">ส่งงานของคนนี้ไป LINE</button></div>
    <div class="tiles"><div class="tile"><div class="k">จำนวนงาน</div><div class="v">${st.tasks}</div></div>
    <div class="tile"><div class="k">ตัวชี้วัด</div><div class="v">${st.nInd}</div></div>
    <div class="tile"><div class="k">คะแนนรวม</div><div class="v ${st.score<0?"neg":""}">${fmtScore(st.score)}</div></div>
