@@ -120,6 +120,10 @@ textarea{width:100%;resize:vertical}
 .legend .pill{min-width:36px;font-size:12px}
 /* popover */
 .plist{display:grid;gap:8px;margin-top:8px}
+.olist{display:grid;gap:4px;max-height:300px;overflow:auto}
+.orow{display:flex;gap:8px;justify-content:space-between;align-items:center;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 8px;font-size:13px;line-height:1.35}
+.orow:hover{border-color:var(--accent);background:var(--accent-soft)}
+.orow b{color:var(--accent);white-space:nowrap;font-size:13px}
 .prow{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 .prow.mine{border-color:var(--accent);background:var(--bg)}
 .pact{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
@@ -359,7 +363,9 @@ const groupOfInd = i => (i && i.group) ? i.group : UNGROUPED;
 const allGroups = () => { const g=[...GROUPS_FIXED, ...S.customGroups.filter(x=>!GROUPS_FIXED.includes(x))];
   S.indicators.forEach(i=>{ if(i.group && !g.includes(i.group)) g.push(i.group); }); return g; };
 const visInds = () => sortedIndicators().filter(i=> !S.group || groupOfInd(i)===S.group);
-const visTasks = () => { const ids=new Set(visInds().map(i=>i.id)); return S.tasks.filter(t=> !S.group ? true : ids.has(t.indicatorId) || (S.group===UNGROUPED && !indById(t.indicatorId))); };
+const taskText = t => { const i=indById(t.indicatorId); return [t.name, t.note, i&&i.code, i&&i.name, groupOfInd(i)].filter(Boolean).join(" ").toLowerCase(); };
+const visTasks = () => { const ids=new Set(visInds().map(i=>i.id)); const tq=(S.taskQ||"").trim().toLowerCase();
+  return S.tasks.filter(t=> (!S.group ? true : ids.has(t.indicatorId) || (S.group===UNGROUPED && !indById(t.indicatorId))) && (!tq || taskText(t).includes(tq))); };
 function sortedIndicators(){ return [...S.indicators].sort((a,b)=>(a.code||"").localeCompare(b.code||"","th",{numeric:true}) || (a.created||0)-(b.created||0)); }
 const sortTasks = list => [...list].sort((a,b)=>{ const ia=indById(a.indicatorId), ib=indById(b.indicatorId);
   return (ia?.code||"~").localeCompare(ib?.code||"~","th",{numeric:true}) || (a.due||"9").localeCompare(b.due||"9") || (a.created||0)-(b.created||0); });
@@ -367,8 +373,10 @@ const sortTasks = list => [...list].sort((a,b)=>{ const ia=indById(a.indicatorId
 const shortName = n => String(n||"").replace(/^(นางสาว|นาง|นาย|น\.ส\.)\s*/,"");
 const todayISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 const topicOf = t => String(t.name||"").replace(/^[\s\d.()\-–:]+(?=\S)/,"").replace(/\s+/g," ").trim() || String(t.name||"").trim();
-function topicsOf(tasks){ const m=new Map(); sortTasks(tasks).forEach(t=>{ const k=topicOf(t); if(!m.has(k)) m.set(k,[]); m.get(k).push(t); }); return [...m.entries()].map(([name,list])=>({name,list})); }
-function popTasks(key){ if(key.startsWith("t:")){ const t=S.tasks.find(x=>x.id===key.slice(2)); return t?[t]:[]; } const name=key.slice(2); return sortTasks(visTasks()).filter(t=>topicOf(t)===name); }
+const groupOfTask = t => groupOfInd(indById(t.indicatorId));
+function topicsOf(tasks){ const m=new Map(); sortTasks(tasks).forEach(t=>{ const g=groupOfTask(t), n=topicOf(t), k=g+" :: "+n; if(!m.has(k)) m.set(k,{key:k, group:g, name:n, list:[]}); m.get(k).list.push(t); });
+  const order=[...allGroups(), UNGROUPED]; return [...m.values()].sort((a,b)=>(order.indexOf(a.group)-order.indexOf(b.group)) || a.name.localeCompare(b.name,"th")); }
+function popTasks(key){ if(key.startsWith("t:")){ const t=S.tasks.find(x=>x.id===key.slice(2)); return t?[t]:[]; } const k=key.slice(2); return sortTasks(visTasks()).filter(t=>groupOfTask(t)+" :: "+topicOf(t)===k); }
 function aggPill(list, sid){
   const mine=list.filter(t=>(t.assignees||[]).includes(sid));
   if(!mine.length) return '<span class="plus" aria-hidden="true">+</span>';
@@ -521,18 +529,21 @@ function viewGrid(){
   const rows = staffRowsFor(tasks);
   const st = personStats(tasks);
   const sel = S.pop ? S.pop.key+"|"+S.pop.sid : "";
+  const gs=[]; topics.forEach(tp=>{ const l=gs[gs.length-1]; if(l&&l.g===tp.group) l.n++; else gs.push({g:tp.group,n:1}); });
+  const gspans = gs.map(x=>`<th class="ihead" colspan="${x.n}" title="${esc(x.g)}"><div class="ihwrap">${esc(x.g)}</div></th>`).join("");
   const head = topics.map(tp=>{ let n=0,sub=0,over=false; tp.list.forEach(t=>{ const p=taskProg(t); n+=p.n; sub+=p.sub; over=over||p.overdue; });
     const dues=[...new Set(tp.list.map(t=>t.due).filter(Boolean))].sort();
     const dueTxt = !dues.length? "ไม่กำหนดส่ง" : dues.length===1? "ส่ง "+thDate(dues[0]) : "ส่ง "+thDate(dues[0])+" – "+thDate(dues[dues.length-1]);
     return `<th class="tcol" title="${esc(tp.name)}"><div class="tname">${esc(tp.name)}</div><div class="tdue">${tp.list.length>1?tp.list.length+" รายการ · ":""}${dueTxt}<br>${n? `<span style="color:${sub===n?"var(--s-on)":over?"var(--s-none)":"inherit"}">ส่งแล้ว ${sub}/${n}</span>` : '<span style="color:var(--s-none)">ยังไม่ระบุคน</span>'}</div></th>`; }).join("");
   const body = rows.map(s=>{ const p=st[s.id];
     return `<tr><td class="who sticky" data-person="${esc(s.id)}"><div class="nm">${esc(s.name)}</div><div class="pos">${esc(s.position||"")}</div></td>`+
-      topics.map(tp=>{ const key="g:"+tp.name+"|"+s.id; const has=tp.list.some(t=>(t.assignees||[]).includes(s.id));
+      topics.map(tp=>{ const key="g:"+tp.key+"|"+s.id; const has=tp.list.some(t=>(t.assignees||[]).includes(s.id));
         return `<td class="cell${key===sel?" sel":""}" data-cell="${esc(key)}" ${has?`data-tip="${esc(s.id)}"`:""} tabindex="0">${aggPill(tp.list,s.id)}</td>`; }).join("")+
       `<td class="tot" data-tip="${esc(s.id)}">${p.tasks||"·"}</td><td class="tot" data-tip="${esc(s.id)}">${p.nInd||"·"}</td><td class="tot ${p.score<0?"neg":""}" data-tip="${esc(s.id)}">${p.tasks?fmtScore(p.score):"·"}</td></tr>`; }).join("");
-  return quickForm() + `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)} <span class="mini">(${topics.length} หัวข้อ · ${tasks.length} งาน)</span></h2>${filterBar('<button type="button" class="btn line" data-line="summary">ส่งสรุปไป LINE</button>')}</div>
+  return quickForm() + `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)} <span class="mini">(${topics.length} หัวข้อ · ${tasks.length} งาน)</span></h2>${taskSearch()}${filterBar('<button type="button" class="btn line" data-line="summary">ส่งสรุปไป LINE</button>')}</div>
   <div class="mx"><table>
-    <thead><tr><th class="sticky" style="vertical-align:bottom;padding:6px 10px">บุคลากร (${rows.length} คน)</th>${head}<th class="tot">งาน</th><th class="tot">ตัวชี้วัด</th><th class="tot">คะแนน</th></tr></thead>
+    <thead><tr><th class="sticky" rowspan="2" style="vertical-align:bottom;padding:6px 10px">บุคลากร (${rows.length} คน)</th>${gspans}<th class="tot" rowspan="2">งาน</th><th class="tot" rowspan="2">ตัวชี้วัด</th><th class="tot" rowspan="2">คะแนน</th></tr>
+    <tr>${head}</tr></thead>
     <tbody>${body || `<tr><td class="empty" colspan="${topics.length+4}">ไม่พบบุคลากรตามเงื่อนไข</td></tr>`}</tbody>
   </table></div>
   <div class="legend">${STATUS.map(x=>`<span><span class="pill p-${x.k}">${fmtScore(S.scoring[x.k])}</span> ${x.label}</span>`).join("")}
@@ -565,7 +576,10 @@ function renderPop(){
     <div class="pwho">${mine.length?`รับผิดชอบ ${mine.length} รายการ`:"ยังไม่ได้มอบหมาย"} · <b>${esc(s.name)}</b></div>
     <div class="ptitle">${esc(title)}</div>
     ${!mine.length && !ro && list.length===1? `<p class="mini" style="margin:4px 0 0">กดมอบหมาย แล้วเลือกคะแนนได้ทันที</p>`:""}
-    <div class="plist">${mine.map(row).join("")}${others.length? (mine.length?`<div class="mini" style="margin:10px 0 4px">รายการอื่นในหัวข้อนี้ที่ยังไม่ได้รับ</div>`:"")+others.map(row).join(""):""}</div>
+    <div class="plist">${mine.map(row).join("")}${others.length===1&&!mine.length? row(others[0]) : others.length? `<div class="mini" style="margin:${mine.length?"10px":"2px"} 0 4px">${mine.length?"รายการอื่นในหัวข้อนี้":"เลือกรายการที่จะรับผิดชอบ"} (${others.length}) — กด “+ รับ”</div>
+      ${others.length>5?`<input type="search" id="popQ" placeholder="ค้นหาในรายการ เช่น ชื่อหลักสูตร" style="width:100%;margin-bottom:6px" aria-label="ค้นหาในรายการ">`:""}
+      <div class="olist">${others.map(t=>{ const i=indById(t.indicatorId); const lab=[i&&i.code, i&&i.name&&i.name!==GENERAL?i.name:"", t.name.trim()!==topicOf(t)?t.name:""].filter(Boolean).join(" · ")||t.name;
+        return `<button type="button" class="orow" data-pact="assign" data-ptid="${esc(t.id)}"><span>${esc(lab)}<small class="mini" style="display:block">${t.due?"ส่ง "+thDate(t.due)+" · ":""}${(t.assignees||[]).length} คน</small></span><b>+ รับ</b></button>`; }).join("")}</div>` : ""}</div>
     <div class="pfoot" style="margin-top:10px;justify-content:space-between"><button type="button" class="btn sm line" data-line="${esc(list.length===1? "task:"+list[0].id : "person:"+s.id)}">${list.length===1?"ส่งงานนี้ไป LINE":"ส่งงานของคนนี้ไป LINE"}</button><button type="button" class="btn sm" id="popClose">ปิด</button></div>
   </div>`;
   const pop=L.firstElementChild; const cell=document.querySelector(`[data-cell="${CSS.escape(p.key+"|"+p.sid)}"]`);
@@ -662,7 +676,7 @@ function viewTasks(){
   const all = visTasks(); const cnt={unassigned:0,incomplete:0,done:0}; all.forEach(t=>cnt[taskProg(t).state]++);
   const fchip=(k,l,n)=>`<button type="button" class="gchip" data-tfilter="${k}" aria-pressed="${S.taskFilter===k}">${l} <span class="n">${n}</span></button>`;
   const head = `<div class="bar" style="margin-top:14px"><h2 class="grow">งานและผู้รับผิดชอบ${S.group?" · "+esc(S.group):""}</h2>
-    <button type="button" class="btn sm line" data-line="summary">ส่งสรุปไป LINE</button>
+    ${taskSearch()}<button type="button" class="btn sm line" data-line="summary">ส่งสรุปไป LINE</button>
     ${S.canEdit?'<button type="button" class="btn sm" data-tab="import">นำเข้าจากไฟล์</button>':""}</div>
     <div class="chips" style="margin-bottom:14px">${fchip("","ทั้งหมด",all.length)}${fchip("incomplete","ยังส่งไม่ครบ",cnt.incomplete)}${fchip("done","ส่งครบแล้ว",cnt.done)}${fchip("unassigned","ยังไม่ระบุผู้รับผิดชอบ",cnt.unassigned)}</div>`;
   if(!inds.length) return addForm + head + `<div class="notice">${S.group?"กลุ่มงาน “"+esc(S.group)+"” ":""}ปีงบประมาณ ${esc(S.fy)} ยังไม่มีตัวชี้วัดย่อย${S.canEdit?" เริ่มจากเพิ่มตัวชี้วัด หรือนำเข้าจากไฟล์ แล้วกด “+ เพิ่มงาน” และเลือกผู้รับผิดชอบของแต่ละงาน":""}</div>`;
@@ -761,6 +775,7 @@ document.addEventListener("submit", async e=>{
   }catch(err){ p.busy=false; renderPanel(); fail(err); }
 }, true);
 
+function taskSearch(){ return `<input type="search" id="taskQ" placeholder="ค้นหางาน / หลักสูตร / ตัวชี้วัด" aria-label="ค้นหางาน" style="min-width:min(260px,100%)" value="${esc(S.taskQ||"")}">`; }
 /* ---------- LINE messages ---------- */
 const ST_ICON={on:"✅",partial:"🟡",late:"🕒",none:"❌"};
 const siteUrl=()=>location.href.split("#")[0];
@@ -1332,6 +1347,8 @@ document.addEventListener("change", async e=>{
 });
 document.addEventListener("input", e=>{
   const t=e.target;
+  if(t.id==="taskQ"){ S.taskQ=t.value; S.pop=null; const pos=t.selectionStart; render(); const q=$("#taskQ"); if(q){ q.focus(); try{q.setSelectionRange(pos,pos)}catch(_){} } return; }
+  if(t.id==="popQ"){ const v=t.value.trim().toLowerCase(); document.querySelectorAll(".orow").forEach(r=>{ r.hidden = v && !r.textContent.toLowerCase().includes(v); }); return; }
   if(t.id==="q"){ S.q=t.value.trim(); const pos=t.selectionStart; render(); const q=$("#q"); q.focus(); try{q.setSelectionRange(pos,pos)}catch(_){} return; }
   if(t.id==="pickQ" && S.panel){ captureTask(); S.panel.filter=t.value; renderPanel(); const q=$("#pickQ"); q.focus(); q.setSelectionRange(q.value.length,q.value.length); }
 });
