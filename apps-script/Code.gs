@@ -46,6 +46,8 @@ const STAFF = [
   ["นายวิชัย มานันที", "คนสวน"]
 ];
 
+const UNITS = ["หนองบัว", "หนองภัยศูนย์", "โพธิ์ชัย", "หนองสวรรค์", "หัวนา", "บ้านขาม", "นามะเฟือง", "บ้านพร้าว", "โนนขมิ้น", "ลำภู", "กุดจิก", "โนนทัน", "นาคำไฮ", "ป่าไม้งาม", "หนองหว้า"];
+
 /* ---------------- ติดตั้งครั้งแรก ---------------- */
 function setup() {
   const props = PropertiesService.getScriptProperties();
@@ -57,6 +59,10 @@ function setup() {
       ops.push({ op: "set", coll: "staff", id: "s" + ("0" + (i + 1)).slice(-2), data: { order: i + 1, name: r[0], position: r[1], active: true } });
     });
   }
+  UNITS.forEach(function (n, i) {
+    const id = "u" + ("0" + (i + 1)).slice(-2);
+    if (!(all.staff || {})[id]) ops.push({ op: "set", coll: "staff", id: id, data: { order: 101 + i, name: "ศกร.ระดับตำบล" + n, position: "ศกร.ระดับตำบล", kind: "unit", active: true } });
+  });
   if (!(all.settings || {}).scoring) ops.push({ op: "set", coll: "settings", id: "scoring", data: { on: 1, partial: 0.5, late: 0, none: -1 } });
   const d = new Date();
   const fy = String((d.getMonth() >= 9 ? d.getFullYear() + 1 : d.getFullYear()) + 543);
@@ -215,8 +221,8 @@ function refreshReadable_() {
   };
   const staffRows = Object.keys(staff).map(function (k) { return staff[k]; })
     .sort(function (a, b) { return (a.order || 0) - (b.order || 0); })
-    .map(function (s) { return [s.order || "", s.name || "", s.position || "", s.active === false ? "พ้นสภาพ/ย้าย" : "ปฏิบัติงาน"]; });
-  write("บุคลากร", ["ลำดับ", "ชื่อ-สกุล", "ตำแหน่ง", "สถานะ"], staffRows);
+    .map(function (s) { return [s.order || "", s.name || "", s.position || "", s.kind === "unit" ? "ศกร.ระดับตำบล" : "บุคลากร", s.active === false ? "ไม่ใช้งาน" : "ใช้งาน"]; });
+  write("บุคลากร", ["ลำดับ", "ชื่อ", "ตำแหน่ง", "ประเภท", "สถานะ"], staffRows);
 
   const taskCount = {};
   Object.keys(d.tasks).forEach(function (k) { const t = d.tasks[k]; taskCount[t.indicatorId] = (taskCount[t.indicatorId] || 0) + 1; });

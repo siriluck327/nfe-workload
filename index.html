@@ -265,6 +265,7 @@ table.std tbody tr:last-child td{border-bottom:0}
 .btn.line{background:#06c755;border-color:#06c755;color:#fff;font-weight:600}
 .btn.line:hover{background:#05b14c;border-color:#05b14c}
 #lineText{font-family:var(--f-body);font-size:14px;line-height:1.6;min-height:280px}
+tr.sep td{background:var(--accent-soft)!important;color:var(--accent);font-weight:700;font-family:var(--f-display);font-size:13px;padding:6px 10px!important;letter-spacing:.02em}
 /* roles */
 .role{display:inline-flex;gap:6px;align-items:center;font-size:13px;margin-right:6px}
 .role .badge{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:2px 10px;font-weight:600}
@@ -356,7 +357,7 @@ const currentFY = () => { const d=new Date(); return String((d.getMonth()>=9? d.
 function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2400); }
 function fail(e){ console.error(e); const c=e&&e.code; if(c==="scored"||c==="denied"){ toast(e.message); return; } toast(c==="quota_exceeded"?"ฐานข้อมูลเต็ม: ลบงานเก่าที่ไม่ใช้ก่อน":c==="invalid_argument"?"บันทึกไม่ได้: ต้องเข้าสู่ระบบผู้ดูแล":"บันทึกไม่สำเร็จ ลองอีกครั้ง"); }
 const staffById = id => S.staff.find(s=>s.id===id);
-const activeStaff = () => S.staff.filter(s=>s.active!==false);
+const activeStaff = () => S.staff.filter(s=>s.active!==false && !isUnit(s));
 const indById = id => S.indicators.find(i=>i.id===id);
 const scoreOf = k => (k && S.scoring[k]!=null) ? Number(S.scoring[k]) : null;
 const groupOfInd = i => (i && i.group) ? i.group : UNGROUPED;
@@ -370,7 +371,11 @@ function sortedIndicators(){ return [...S.indicators].sort((a,b)=>(a.code||"").l
 const sortTasks = list => [...list].sort((a,b)=>{ const ia=indById(a.indicatorId), ib=indById(b.indicatorId);
   return (ia?.code||"~").localeCompare(ib?.code||"~","th",{numeric:true}) || (a.due||"9").localeCompare(b.due||"9") || (a.created||0)-(b.created||0); });
 
-const shortName = n => String(n||"").replace(/^(นางสาว|นาง|นาย|น\.ส\.)\s*/,"");
+const shortName = n => String(n||"").replace(/^(นางสาว|นาง|นาย|น\.ส\.)\s*/,"").replace(/^ศกร\.ระดับตำบล\s*/,"ศกร.ต.");
+const UNIT_POS="ศกร.ระดับตำบล";
+const UNIT_NAMES=["หนองบัว","หนองภัยศูนย์","โพธิ์ชัย","หนองสวรรค์","หัวนา","บ้านขาม","นามะเฟือง","บ้านพร้าว","โนนขมิ้น","ลำภู","กุดจิก","โนนทัน","นาคำไฮ","ป่าไม้งาม","หนองหว้า"];
+const isUnit = s => !!s && (s.kind==="unit" || s.position===UNIT_POS);
+const sortPeople = list => [...list].sort((a,b)=>(isUnit(a)-isUnit(b)) || (a.order||0)-(b.order||0));
 const todayISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 const topicOf = t => String(t.name||"").replace(/^[\s\d.()\-–:]+(?=\S)/,"").replace(/\s+/g," ").trim() || String(t.name||"").trim();
 const groupOfTask = t => groupOfInd(indById(t.indicatorId));
@@ -508,7 +513,7 @@ function renderGroups(){
 
 function staffRowsFor(tasks){
   const assigned=new Set(tasks.flatMap(t=>t.assignees||[]));
-  return [...S.staff].sort((a,b)=>(a.order||0)-(b.order||0))
+  return sortPeople(S.staff)
     .filter(s=> s.active!==false || assigned.has(s.id))
     .filter(s=> !S.posFilter || (s.position||"ไม่ระบุตำแหน่ง")===S.posFilter)
     .filter(s=> !S.q || (s.name||"").includes(S.q));
@@ -535,14 +540,15 @@ function viewGrid(){
     const dues=[...new Set(tp.list.map(t=>t.due).filter(Boolean))].sort();
     const dueTxt = !dues.length? "ไม่กำหนดส่ง" : dues.length===1? "ส่ง "+thDate(dues[0]) : "ส่ง "+thDate(dues[0])+" – "+thDate(dues[dues.length-1]);
     return `<th class="tcol" title="${esc(tp.name)}"><div class="tname">${esc(tp.name)}</div><div class="tdue">${tp.list.length>1?tp.list.length+" รายการ · ":""}${dueTxt}<br>${n? `<span style="color:${sub===n?"var(--s-on)":over?"var(--s-none)":"inherit"}">ส่งแล้ว ${sub}/${n}</span>` : '<span style="color:var(--s-none)">ยังไม่ระบุคน</span>'}</div></th>`; }).join("");
+  const firstUnit = rows.find(isUnit);
   const body = rows.map(s=>{ const p=st[s.id];
-    return `<tr><td class="who sticky" data-person="${esc(s.id)}"><div class="nm">${esc(s.name)}</div><div class="pos">${esc(s.position||"")}</div></td>`+
+    return (s===firstUnit? `<tr class="sep"><td class="sticky">ศกร.ระดับตำบล (${rows.filter(isUnit).length} แห่ง)</td><td colspan="${topics.length+3}"></td></tr>` : "") + `<tr><td class="who sticky" data-person="${esc(s.id)}"><div class="nm">${esc(s.name)}</div><div class="pos">${esc(s.position||"")}</div></td>`+
       topics.map(tp=>{ const key="g:"+tp.key+"|"+s.id; const has=tp.list.some(t=>(t.assignees||[]).includes(s.id));
         return `<td class="cell${key===sel?" sel":""}" data-cell="${esc(key)}" ${has?`data-tip="${esc(s.id)}"`:""} tabindex="0">${aggPill(tp.list,s.id)}</td>`; }).join("")+
       `<td class="tot" data-tip="${esc(s.id)}">${p.tasks||"·"}</td><td class="tot" data-tip="${esc(s.id)}">${p.nInd||"·"}</td><td class="tot ${p.score<0?"neg":""}" data-tip="${esc(s.id)}">${p.tasks?fmtScore(p.score):"·"}</td></tr>`; }).join("");
   return quickForm() + `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)} <span class="mini">(${topics.length} หัวข้อ · ${tasks.length} งาน)</span></h2>${taskSearch()}${filterBar('<button type="button" class="btn line" data-line="summary">ส่งสรุปไป LINE</button>')}</div>
   <div class="mx"><table>
-    <thead><tr><th class="sticky" rowspan="2" style="vertical-align:bottom;padding:6px 10px">บุคลากร (${rows.length} คน)</th>${gspans}<th class="tot" rowspan="2">งาน</th><th class="tot" rowspan="2">ตัวชี้วัด</th><th class="tot" rowspan="2">คะแนน</th></tr>
+    <thead><tr><th class="sticky" rowspan="2" style="vertical-align:bottom;padding:6px 10px">บุคลากร (${rows.filter(x=>!isUnit(x)).length} คน)${rows.some(isUnit)?` · ศกร.ตำบล ${rows.filter(isUnit).length}`:""}</th>${gspans}<th class="tot" rowspan="2">งาน</th><th class="tot" rowspan="2">ตัวชี้วัด</th><th class="tot" rowspan="2">คะแนน</th></tr>
     <tr>${head}</tr></thead>
     <tbody>${body || `<tr><td class="empty" colspan="${topics.length+4}">ไม่พบบุคลากรตามเงื่อนไข</td></tr>`}</tbody>
   </table></div>
@@ -612,14 +618,15 @@ function viewReport(){
   let rows = staffRowsFor(tasks);
   const k=S.sort.k, d=S.sort.dir;
   const val = s => k==="order"? (s.order||0) : k==="name"? (s.name||"") : (st[s.id][k] ?? -999);
-  rows.sort((a,b)=>{ const x=val(a), y=val(b); return (typeof x==="string"? x.localeCompare(y,"th") : x-y)*d; });
+  rows.sort((a,b)=>{ const x=val(a), y=val(b); return (isUnit(a)-isUnit(b)) || (typeof x==="string"? x.localeCompare(y,"th") : x-y)*d; });
+  const firstUnitR = rows.find(isUnit);
   const max = Math.max(1, ...Object.values(st).map(p=>p.tasks));
   const th = (key,label,cls="") => `<th class="sortable ${cls}" data-sort="${key}">${label}${S.sort.k===key?(S.sort.dir>0?" ▲":" ▼"):""}</th>`;
   const body = rows.map((s,i)=>{ const p=st[s.id];
-    return `<tr class="click" data-person="${esc(s.id)}">
+    return (s===firstUnitR? `<tr class="sep"><td colspan="12">ศกร.ระดับตำบล</td></tr>` : "") + `<tr class="click" data-person="${esc(s.id)}">
       <td class="num">${i+1}</td>
       <td><div class="nm" style="white-space:nowrap">${esc(s.name)}</div><div class="pos" style="white-space:nowrap">${esc(s.position||"")}${s.active===false?" · พ้นสภาพ":""}</div></td>
-      <td data-tip="${esc(s.id)}"><div class="load"><b>${p.tasks}</b><div class="track"><div class="fill" style="width:${p.tasks/max*100}%"></div></div></div>${loadChip(p.tasks,avg)}</td>
+      <td data-tip="${esc(s.id)}"><div class="load"><b>${p.tasks}</b><div class="track"><div class="fill" style="width:${p.tasks/max*100}%"></div></div></div>${isUnit(s)?"":loadChip(p.tasks,avg)}</td>
       <td class="num" data-tip="${esc(s.id)}">${p.nInd||"·"}</td>
       <td class="num">${p.on||"·"}</td><td class="num">${p.partial||"·"}</td><td class="num">${p.late||"·"}</td><td class="num">${p.none||"·"}</td><td class="num">${p.wait||"·"}</td>
       <td class="num score ${p.score<0?"neg":""}" data-tip="${esc(s.id)}">${fmtScore(p.score)}</td>
@@ -918,17 +925,25 @@ document.addEventListener("input", e=>{ if(e.target.id==="assQ" && S.assignPop){
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.assignPop){ S.assignPop=null; renderAssign(); e.stopImmediatePropagation(); } }, true);
 
 function viewStaff(){
-  const list=[...S.staff].sort((a,b)=>(a.order||0)-(b.order||0));
-  const rows=list.map(s=>`<tr>
+  const sorted=sortPeople(S.staff); const people=sorted.filter(x=>!isUnit(x)), units=sorted.filter(isUnit);
+  const tr = s=>`<tr>
     <td class="num">${s.order||""}</td>
     <td class="nm">${esc(s.name)}</td><td class="pos">${esc(s.position||"")}</td>
-    <td>${s.active===false?'<span class="chip c-low">พ้นสภาพ/ย้าย</span>':'<span class="chip c-ok">ปฏิบัติงาน</span>'}</td>
-    <td class="edit-only" style="white-space:nowrap"><button class="btn sm ghost" data-editstaff="${esc(s.id)}" type="button">แก้ไข</button></td></tr>`).join("");
+    <td>${s.active===false?'<span class="chip c-low">'+(isUnit(s)?"ปิด/ยุบ":"พ้นสภาพ/ย้าย")+'</span>':'<span class="chip c-ok">'+(isUnit(s)?"เปิดดำเนินการ":"ปฏิบัติงาน")+'</span>'}</td>
+    <td class="edit-only" style="white-space:nowrap"><button class="btn sm ghost" data-editstaff="${esc(s.id)}" type="button">แก้ไข</button></td></tr>`;
+  const rows=people.map(tr).join("");
+  const missing=UNIT_NAMES.filter(n=>!units.some(u=>u.name===UNIT_POS+n));
+  const unitBox = `<div class="bar" style="margin-top:22px"><h2 class="grow">ศกร.ระดับตำบล (${units.length} แห่ง)</h2>
+      ${missing.length?`<button class="btn pri edit-only" type="button" id="seedUnits">+ เพิ่ม ศกร.ระดับตำบล ${missing.length} แห่ง</button>`:""}
+      <button class="btn edit-only" type="button" id="newUnit">+ เพิ่มทีละแห่ง</button></div>
+    <div class="tablebox"><table class="std"><thead><tr><th class="num">ที่</th><th>ชื่อ</th><th>ประเภท</th><th>สถานะ</th><th class="edit-only"></th></tr></thead>
+    <tbody>${units.map(tr).join("")||`<tr><td colspan="5" class="empty">ยังไม่มีรายชื่อ ศกร.ระดับตำบล${S.canEdit?" — กดปุ่ม “+ เพิ่ม ศกร.ระดับตำบล” ด้านบน":""}</td></tr>`}</tbody></table></div>`;
   return `<div class="grid2">
    <div>
-    <div class="bar"><h2 class="grow">รายชื่อบุคลากร (${S.staff.length} คน)</h2><button class="btn pri edit-only" type="button" id="newStaff">+ เพิ่มบุคลากร</button></div>
+    <div class="bar"><h2 class="grow">รายชื่อบุคลากร (${people.length} คน)</h2><button class="btn pri edit-only" type="button" id="newStaff">+ เพิ่มบุคลากร</button></div>
     <div class="tablebox"><table class="std"><thead><tr><th class="num">ที่</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>สถานะ</th><th class="edit-only"></th></tr></thead>
     <tbody>${rows||'<tr><td colspan="5" class="empty">ยังไม่มีรายชื่อ กด “+ เพิ่มบุคลากร” หรือวางรายชื่อหลายคนในกล่องด้านขวา</td></tr>'}</tbody></table></div>
+    ${unitBox}
    </div>
    <div style="display:grid;gap:20px">
     <div class="card"><h3>ผู้ดูแลระบบและผู้ใช้</h3>
@@ -1190,7 +1205,7 @@ function renderPanel(){
 function panelTask(p){
   const d=p.draft; const ro = !S.canEdit;
   const inds=sortedIndicators();
-  const groups={}; activeStaff().concat(S.staff.filter(s=>s.active===false && d.assignees.includes(s.id)))
+  const groups={}; S.staff.filter(s=>s.active!==false).concat(S.staff.filter(s=>s.active===false && d.assignees.includes(s.id)))
     .sort((a,b)=>(a.order||0)-(b.order||0)).forEach(s=>{ const g=s.position||"ไม่ระบุตำแหน่ง"; (groups[g]=groups[g]||[]).push(s); });
   const f = (p.filter||"").trim();
   const picker = Object.entries(groups).map(([g,list])=>{
@@ -1250,6 +1265,7 @@ function panelStaff(p){ const d=p.draft;
    <label class="field"><span>ตำแหน่ง</span><input type="text" id="sPos" value="${esc(d.position||"")}" list="poslist2">
    <datalist id="poslist2">${[...new Set(S.staff.map(s=>s.position).filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label>
    <label class="field"><span>ลำดับที่</span><input type="number" id="sOrder" value="${esc(d.order)}" style="max-width:120px"></label>
+   <label class="pitem" style="padding:0 0 8px"><input type="checkbox" id="sUnit" ${isUnit(d)?"checked":""}> เป็น ศกร.ระดับตำบล (แสดงแยกจากรายชื่อครู)</label>
    <label class="pitem" style="padding:0 0 12px"><input type="checkbox" id="sActive" ${d.active!==false?"checked":""}> ยังปฏิบัติงานอยู่ (เอาออกเมื่อย้าย/ลาออก ข้อมูลงานเดิมยังอยู่ในรายงาน)</label>
    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between"><button class="btn pri" type="submit">บันทึก</button>
    ${p.isNew?"":`<button type="button" class="btn danger ${S.armed==="staff"?"armed":""}" id="delStaff">${S.armed==="staff"?"กดอีกครั้งเพื่อยืนยันลบรายชื่อ":"ลบรายชื่อ"}</button>`}</div>
@@ -1294,7 +1310,7 @@ document.addEventListener("click", async e=>{
     if(t.id==="popClose"){ S.pop=null; render(); return; }
   }
   const cell=t.closest("[data-cell]"); if(cell){ S.assignPop=null; renderAssign(); const v=cell.dataset.cell; const cut=v.lastIndexOf("|"); const key=v.slice(0,cut), sid=v.slice(cut+1);
-    S.pop = (S.pop&&S.pop.key===key&&S.pop.sid===sid)? null : {key,sid};
+    S.pop = (S.pop&&S.pop.key===key&&S.pop.sid===sid)? null : {key,sid,at:Date.now()};
     document.querySelectorAll(".mx td.cell.sel").forEach(c=>c.classList.remove("sel")); if(S.pop) cell.classList.add("sel"); renderPop(); return; }
   if(S.pop && !t.closest(".pop")){ S.pop=null; document.querySelectorAll(".mx td.cell.sel").forEach(c=>c.classList.remove("sel")); renderPop(); }
   const so=t.closest("[data-sort]"); if(so){ const k=so.dataset.sort; S.sort = S.sort.k===k? {k,dir:-S.sort.dir} : {k,dir:(k==="name"||k==="order")?1:-1}; render(); return; }
@@ -1303,6 +1319,10 @@ document.addEventListener("click", async e=>{
   const nt=t.closest("[data-newtask]"); if(nt){ openPanel({type:"task", isNew:true, draft:{name:"",indicatorId:nt.dataset.newtask,due:"",note:"",assignees:[],results:{}}}); return; }
   const ei=t.closest("[data-editind]"); if(ei){ const i=indById(ei.dataset.editind); openPanel({type:"ind", draft:{...i}}); return; }
   const es=t.closest("[data-editstaff]"); if(es){ const s=staffById(es.dataset.editstaff); openPanel({type:"staff", draft:{...s}}); return; }
+  if(t.id==="seedUnits"){ const units=S.staff.filter(isUnit); let o=Math.max(100,...units.map(u=>u.order||0)); const ops=[];
+    UNIT_NAMES.forEach((n,i)=>{ const name=UNIT_POS+n; if(units.some(u=>u.name===name)) return; ops.push(S.db.doc("staff/u"+String(i+1).padStart(2,"0")).set({name, position:UNIT_POS, kind:"unit", order:101+i, active:true})); });
+    try{ await Promise.all(ops); toast("เพิ่ม ศกร.ระดับตำบล "+ops.length+" แห่งแล้ว"); }catch(err){ fail(err); } return; }
+  if(t.id==="newUnit"){ const mx=Math.max(100,...S.staff.filter(isUnit).map(s=>s.order||0)); openPanel({type:"staff", isNew:true, draft:{name:UNIT_POS,position:UNIT_POS,kind:"unit",order:mx+1,active:true}}); return; }
   if(t.id==="newStaff"){ const mx=Math.max(0,...S.staff.map(s=>s.order||0)); openPanel({type:"staff", isNew:true, draft:{name:"",position:"",order:mx+1,active:true}}); return; }
   if(t.id==="addFy"){ const next=String(Math.max(Number(currentFY()),...S.years.map(y=>Number(y.id)))+1); const ex=S.years.some(y=>y.id===S.fy);
     try{ if(!ex) await S.db.doc("years/"+S.fy).set({label:S.fy}); await S.db.doc("years/"+next).set({label:next}); setFy(next); toast("เพิ่มปีงบประมาณ "+next+" แล้ว"); }catch(err){fail(err)} return; }
@@ -1331,7 +1351,7 @@ document.addEventListener("keydown", e=>{
   if(e.key==="Enter" && e.target.matches(".task[data-task], td.cell[data-cell]")) e.target.click();
 });
 addEventListener("resize", ()=>{ if(S.pop) renderPop(); });
-document.addEventListener("scroll", e=>{ if(S.pop && innerWidth>600 && !(e.target.closest && e.target.closest(".pop"))){ S.pop=null; document.querySelectorAll(".mx td.cell.sel").forEach(c=>c.classList.remove("sel")); renderPop(); } }, true);
+document.addEventListener("scroll", e=>{ if(S.pop && innerWidth>600 && Date.now()-(S.pop.at||0)>400 && !(e.target.closest && e.target.closest(".pop"))){ S.pop=null; document.querySelectorAll(".mx td.cell.sel").forEach(c=>c.classList.remove("sel")); renderPop(); } }, true);
 document.addEventListener("change", async e=>{
   const t=e.target;
   if(t.id==="fy"){ setFy(t.value); return; }
@@ -1380,7 +1400,7 @@ document.addEventListener("submit", async e=>{
       const body={fy:d.fy||S.fy, indicatorId:d.indicatorId, name:d.name.trim(), due:d.due||"", note:d.note||"", assignees:d.assignees, results, updated:Date.now(), created:d.created||Date.now()};
       const ref = p.isNew? S.db.collection("tasks").doc() : S.db.doc("tasks/"+p.id);
       await ref.set(body); closePanel(); toast((p.isNew?"เพิ่มงานแล้ว":"บันทึกแล้ว")+(d.assignees.length?"":" · ยังไม่ได้เลือกผู้รับผิดชอบ")); }
-    else if(f.id==="staffForm"){ const p=S.panel; const body={name:$("#sName").value.trim(), position:$("#sPos").value.trim(), order:Number($("#sOrder").value)||0, active:$("#sActive").checked};
+    else if(f.id==="staffForm"){ const p=S.panel; const unit=$("#sUnit").checked; const body={name:$("#sName").value.trim(), position:$("#sPos").value.trim()||(unit?UNIT_POS:""), kind: unit?"unit":"", order:Number($("#sOrder").value)||0, active:$("#sActive").checked};
       if(!body.name) return; if(p.isNew) await S.db.collection("staff").add(body); else await S.db.doc("staff/"+p.draft.id).set(body); closePanel(); toast("บันทึกแล้ว"); }
     else if(f.id==="scoreForm"){ const sc={}; STATUS.forEach(x=>{ const n=parseFloat($("#sc-"+x.k).value); sc[x.k]=isNaN(n)?DEFAULT_SCORE[x.k]:n; }); await S.db.doc("settings/scoring").set(sc); toast("บันทึกเกณฑ์คะแนนแล้ว"); }
     else if(f.id==="bulkForm"){ const lines=$("#bulk").value.split(/\n/).map(l=>l.trim()).filter(Boolean); let o=Math.max(0,...S.staff.map(s=>s.order||0));
