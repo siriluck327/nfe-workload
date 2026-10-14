@@ -1,0 +1,1286 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>ภาระงานบุคลากร สกร.เมืองหนองบัวลำภู</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@500;600;700&family=Sarabun:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: navy system bar (name + fiscal year) → work-group chips → tabs; main view is a staff × task score grid with sticky names on the left and a cell popover */
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --sunk:#e9edf4; --line:#d5dbe6; --ink:#14213d; --muted:#56627a;
+  --brand:#1b3a6b; --brand-ink:#ffffff; --brand-muted:#b9c7e0;
+  --accent:#2b59c3; --accent-ink:#ffffff; --accent-soft:#e3eafb; --code:#0d6f78;
+  --s-on:#157f3b; --s-on-bg:#dcf2e3; --s-partial:#9a5800; --s-partial-bg:#fbecd0;
+  --s-late:#4b5563; --s-late-bg:#e5e7eb; --s-none:#b42318; --s-none-bg:#fde2df; --s-wait:#6b7690;
+  --shadow:0 12px 36px rgba(20,33,61,.22);
+  --f-display:"IBM Plex Sans Thai","Sarabun",system-ui,sans-serif;
+  --f-body:"Sarabun","IBM Plex Sans Thai",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1522; --surface:#161e2e; --sunk:#1d2738; --line:#2c3850; --ink:#e6ebf5; --muted:#9aa6bd;
+  --brand:#13213b; --brand-ink:#eef2fa; --brand-muted:#8fa1c4;
+  --accent:#7aa2ff; --accent-ink:#0b1426; --accent-soft:#1f2d4d; --code:#4fc3cc;
+  --s-on:#6fd396; --s-on-bg:#173527; --s-partial:#f2bd5c; --s-partial-bg:#3b2d14; --s-late:#b8c0cc; --s-late-bg:#2a3240;
+  --s-none:#ff8b80; --s-none-bg:#43201d; --s-wait:#8793ab; --shadow:0 12px 36px rgba(0,0,0,.55); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1522; --surface:#161e2e; --sunk:#1d2738; --line:#2c3850; --ink:#e6ebf5; --muted:#9aa6bd;
+  --brand:#13213b; --brand-ink:#eef2fa; --brand-muted:#8fa1c4;
+  --accent:#7aa2ff; --accent-ink:#0b1426; --accent-soft:#1f2d4d; --code:#4fc3cc;
+  --s-on:#6fd396; --s-on-bg:#173527; --s-partial:#f2bd5c; --s-partial-bg:#3b2d14; --s-late:#b8c0cc; --s-late-bg:#2a3240;
+  --s-none:#ff8b80; --s-none-bg:#43201d; --s-wait:#8793ab; --shadow:0 12px 36px rgba(0,0,0,.55); color-scheme:dark}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;margin:0}
+.inner{max-width:1280px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;text-wrap:balance;margin:0;line-height:1.3}
+h1{font-size:clamp(19px,2.6vw,24px)}
+h2{font-size:18px}
+h3{font-size:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* system bar */
+.sysbar{background:var(--brand);color:var(--brand-ink)}
+.sysbar .inner{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center;justify-content:space-between;padding-block:16px}
+.org{font-size:13px;color:var(--brand-muted);letter-spacing:.02em}
+.fybox{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fybox label{font-size:13px;color:var(--brand-muted)}
+.fysel{font-family:var(--f-display);font-weight:600;font-size:16px;padding:4px 10px;background:rgba(255,255,255,.1);color:var(--brand-ink);border:1px solid rgba(255,255,255,.25);border-radius:6px}
+.fysel option{color:#14213d;background:#fff}
+.btn-on-brand{border:1px solid rgba(255,255,255,.3);background:transparent;color:var(--brand-ink);border-radius:6px;padding:4px 12px;font-size:13px}
+/* group bar */
+.groupbar{background:var(--surface);border-bottom:1px solid var(--line)}
+.groupbar .inner{padding-block:12px}
+.gb-label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.06em;margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.gchip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:14px;display:inline-flex;gap:6px;align-items:center}
+.gchip .n{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.gchip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.gchip[aria-pressed=true] .n{color:var(--accent-ink);opacity:.8}
+.gchip.add{border-style:dashed;color:var(--accent)}
+.gadd{display:inline-flex;gap:6px;align-items:center}
+/* tabs */
+.tabs{display:flex;gap:2px;margin:16px 0 18px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:0;background:none;padding:10px 14px;border-bottom:3px solid transparent;color:var(--muted);font-weight:600;white-space:nowrap;font-family:var(--f-display)}
+.tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding-bottom:60px}
+select,input[type=text],input[type=date],input[type=number],input[type=search],textarea{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0}
+textarea{width:100%;resize:vertical}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 14px;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.sm{padding:3px 10px;font-size:13px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--accent);padding-inline:6px}
+.btn.danger{color:var(--s-none)}
+.btn.danger.armed{background:var(--s-none);color:#fff;border-color:var(--s-none)}
+.notice{background:var(--sunk);border-radius:8px;padding:12px 16px;font-size:14px;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.bar .grow{flex:1 1 220px;min-width:0}
+.mini{font-size:13px;color:var(--muted)}
+/* score grid */
+.mx{overflow:auto;max-height:calc(100vh - 140px);border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.mx table{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}
+.mx th,.mx td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:0}
+.mx thead th{position:sticky;background:var(--sunk);z-index:2;font-weight:600;font-size:12px;color:var(--muted);text-align:left;vertical-align:bottom}
+.mx thead tr:first-child th{top:0;height:30px;padding:4px 8px}
+.mx thead tr:nth-child(2) th{top:30px;padding:6px 8px;width:118px;min-width:118px;max-width:118px}
+.mx th.ihead{color:var(--code);font-family:var(--f-display);font-size:13px;border-bottom:2px solid var(--code)}
+.mx .ihwrap{width:0;min-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.mx .tname{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:var(--ink);font-size:12.5px;line-height:1.35;font-weight:600}
+.mx .tdue{font-weight:400;font-size:11.5px;color:var(--muted);margin-top:2px}
+.mx th.tcol{cursor:pointer}
+.mx th.tcol:hover .tname{color:var(--accent)}
+.mx .sticky{position:sticky;left:0;z-index:1;background:var(--surface)}
+.mx thead .sticky{z-index:3;background:var(--sunk);width:230px;min-width:230px}
+.mx td.who{padding:6px 10px;width:230px;min-width:230px;max-width:230px;cursor:pointer}
+.mx td.who:hover .nm{color:var(--accent)}
+.mx td.who .nm{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mx td.who .pos{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mx td.cell{text-align:center;height:46px;cursor:pointer;min-width:118px}
+.mx td.cell:hover{background:var(--accent-soft)}
+.mx td.cell.sel{box-shadow:inset 0 0 0 2px var(--accent)}
+.mx td.cell .plus{opacity:0;color:var(--accent);font-size:18px}
+.mx td.cell:hover .plus{opacity:.7}
+.mx td.tot{padding:4px 10px;text-align:right;font-weight:700;min-width:64px;background:var(--sunk)}
+.mx thead th.tot{text-align:right}
+.mx tbody tr:hover td.who{background:var(--accent-soft)}
+.pill{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:2px 8px;border-radius:5px;font-weight:700;font-size:14px}
+.p-on{background:var(--s-on-bg);color:var(--s-on)}
+.p-partial{background:var(--s-partial-bg);color:var(--s-partial)}
+.p-late{background:var(--s-late-bg);color:var(--s-late)}
+.p-none{background:var(--s-none-bg);color:var(--s-none)}
+.p-wait{border:1.5px dashed var(--s-wait);color:var(--s-wait);font-weight:600;font-size:12px}
+.neg{color:var(--s-none)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:13px;color:var(--muted);align-items:center;margin-top:10px}
+.legend .pill{min-width:36px;font-size:12px}
+/* popover */
+.pop{position:fixed;z-index:30;width:340px;max-width:calc(100vw - 24px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:14px 16px}
+.pop .ptitle{font-family:var(--f-display);font-weight:600;font-size:15px;line-height:1.35}
+.pop .pmeta{font-size:13px;color:var(--muted);margin:4px 0 10px}
+.pop .pwho{font-size:13px;margin-bottom:6px}
+.pop .pwho b{font-weight:600}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.choice{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px 8px;text-align:left;font-size:13px;display:flex;gap:8px;align-items:center}
+.choice .sc{font-weight:700;min-width:30px;text-align:center;border-radius:4px;padding:0 4px}
+.choice[aria-pressed=true]{border-color:currentColor;box-shadow:inset 0 0 0 1px currentColor}
+.choice.on{color:var(--s-on)} .choice.partial{color:var(--s-partial)} .choice.late{color:var(--s-late)} .choice.none{color:var(--s-none)}
+.choice .lb{color:var(--ink)}
+.pfields{display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;font-size:13px;margin-bottom:10px}
+.pfoot{display:flex;flex-wrap:wrap;gap:6px;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px}
+.hint{font-size:12px;color:var(--s-none)}
+@media (max-width:600px){.pop{left:0!important;right:0;top:auto!important;bottom:0;width:100%;max-width:100%;border-radius:12px 12px 0 0;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .mx td.who,.mx thead .sticky{width:150px;min-width:150px;max-width:150px}}
+/* report + tables */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:22px}
+.tile{background:var(--surface);padding:12px 16px}
+.tile .k{font-size:13px;color:var(--muted)}
+.tile .v{font-family:var(--f-display);font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+.tile .v small{font-family:var(--f-body);font-size:13px;font-weight:400;color:var(--muted)}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table.std{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+table.std th,table.std td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+table.std th{font-size:13px;font-weight:600;color:var(--muted);background:var(--sunk);white-space:nowrap}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--ink)}
+.num{text-align:right!important}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--accent-soft)}
+table.std tbody tr:last-child td{border-bottom:0}
+.nm{font-weight:600}
+.pos{font-size:13px;color:var(--muted)}
+.load{display:flex;align-items:center;gap:8px;min-width:130px}
+.load .track{flex:1;height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.load .fill{height:100%;background:var(--accent)}
+.load b{min-width:22px;text-align:right}
+.chip{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;white-space:nowrap;font-weight:600}
+.c-high{background:var(--s-partial-bg);color:var(--s-partial)}
+.c-low{background:var(--sunk);color:var(--muted)}
+.c-zero{background:var(--s-none-bg);color:var(--s-none)}
+.c-ok{background:var(--s-on-bg);color:var(--s-on)}
+.score{font-weight:700}
+.st{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:4px;white-space:nowrap}
+.st-on{background:var(--s-on-bg);color:var(--s-on)} .st-partial{background:var(--s-partial-bg);color:var(--s-partial)}
+.st-late{background:var(--s-late-bg);color:var(--s-late)} .st-none{background:var(--s-none-bg);color:var(--s-none)}
+.st-wait{border:1px dashed var(--line);color:var(--s-wait)}
+/* indicators */
+.ghead{font-family:var(--f-display);font-size:15px;font-weight:600;color:var(--muted);margin:22px 0 10px;display:flex;align-items:center;gap:10px}
+.ghead::after{content:"";flex:1;height:1px;background:var(--line)}
+.ind{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:12px}
+.ind-h{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ind-h .code{font-family:var(--f-display);font-weight:600;color:var(--code)}
+.ind-h h3{flex:1 1 220px;min-width:0}
+.ind-h .meta{font-size:13px;color:var(--muted)}
+.task{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;padding:10px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+.task:last-child{border-bottom:0}
+.task:hover{background:var(--accent-soft)}
+.task .tn{font-weight:600}
+.task .tm{font-size:13px;color:var(--muted)}
+.dots{display:flex;flex-wrap:wrap;gap:3px;align-items:center;justify-content:flex-end;max-width:240px}
+.dot{width:10px;height:10px;border-radius:2px;background:var(--sunk);border:1px solid var(--line);display:inline-block}
+.dot.on{background:var(--s-on);border-color:var(--s-on)} .dot.partial{background:var(--s-partial);border-color:var(--s-partial)}
+.dot.late{background:var(--s-late);border-color:var(--s-late)} .dot.none{background:var(--s-none);border-color:var(--s-none)}
+.empty{padding:22px 16px;color:var(--muted);text-align:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:20px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px}
+.card h3{margin-bottom:10px}
+.form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.form input[type=text]{flex:1 1 160px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field>span{font-size:13px;color:var(--muted);font-weight:600}
+.scorerow{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:8px;align-items:center;margin-bottom:8px}
+/* slide-over */
+.ov{position:fixed;inset:0;background:rgba(10,16,30,.45);z-index:20;display:flex;justify-content:flex-end}
+.panel{background:var(--bg);width:min(720px,100%);height:100%;overflow-y:auto;box-shadow:var(--shadow);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.panel-h{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:14px max(20px,env(safe-area-inset-right,0px)) 14px 20px;display:flex;gap:10px;align-items:center;z-index:2}
+.panel-h h2{flex:1;min-width:0}
+.panel-b{padding:18px max(20px,env(safe-area-inset-right,0px)) 40px 20px}
+.picker{border:1px solid var(--line);border-radius:8px;background:var(--surface);max-height:300px;overflow-y:auto}
+.pgrp{padding:6px 12px;font-size:13px;font-weight:600;color:var(--muted);background:var(--sunk);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0}
+.pitem{display:flex;gap:8px;align-items:center;padding:5px 12px;cursor:pointer}
+.pitem:hover{background:var(--accent-soft)}
+.res{border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.rrow{padding:10px 12px;border-bottom:1px solid var(--line);display:grid;gap:6px}
+.rrow:last-child{border-bottom:0}
+.rtop{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:5px;padding:3px 9px;font-size:13px}
+.seg button[aria-pressed=true].on{background:var(--s-on-bg);color:var(--s-on);border-color:var(--s-on)}
+.seg button[aria-pressed=true].partial{background:var(--s-partial-bg);color:var(--s-partial);border-color:var(--s-partial)}
+.seg button[aria-pressed=true].late{background:var(--s-late-bg);color:var(--s-late);border-color:var(--s-late)}
+.seg button[aria-pressed=true].none{background:var(--s-none-bg);color:var(--s-none);border-color:var(--s-none)}
+.rmeta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+.rmeta input[type=text]{flex:1 1 140px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;z-index:40;font-size:14px}
+.ro .edit-only{display:none!important}
+/* task tracking */
+.task2{padding:12px 16px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.task2:last-child{border-bottom:0}
+.t-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.t-main{cursor:pointer;flex:1 1 260px;min-width:0}
+.t-main .tn{font-weight:600}
+.t-main .tm{font-size:13px;color:var(--muted)}
+.t-main:hover .tn{color:var(--accent)}
+.prog{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.prog span{display:block;height:100%;background:var(--s-on)}
+.people{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pchip{display:inline-flex;gap:6px;align-items:center;border-radius:999px;padding:2px 3px 2px 10px;font-size:13px;border:1px solid transparent;max-width:100%}
+.pchip b{border-radius:999px;padding:0 7px;font-size:12px;background:var(--surface);min-width:28px;text-align:center}
+.k-on{background:var(--s-on-bg);color:var(--s-on)} .k-partial{background:var(--s-partial-bg);color:var(--s-partial)}
+.k-late{background:var(--s-late-bg);color:var(--s-late)} .k-none{background:var(--s-none-bg);color:var(--s-none)}
+.k-wait{background:var(--surface);border:1px dashed var(--s-wait);color:var(--ink)} .k-wait b{background:var(--sunk);color:var(--s-wait)}
+.apop{max-height:min(560px,85vh);overflow:auto}
+.apop .picker{max-height:min(320px,48vh)}
+/* documents + tooltip */
+.origin{padding:8px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted);background:var(--bg)}
+.origin b{color:var(--ink);font-weight:600}
+.doccard{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:12px 14px;margin-bottom:10px;display:grid;gap:6px}
+.doccard .dsrc{font-size:12px;font-weight:600;color:var(--code)}
+.doccard .dsub{font-weight:600}
+.doccard .dmeta{font-size:13px;color:var(--muted)}
+.flinks{display:flex;flex-wrap:wrap;gap:6px}
+.flink{display:inline-flex;gap:6px;align-items:center;background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:3px 10px;font-size:13px;text-decoration:none;max-width:100%}
+.flink span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--bg);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;max-width:320px;box-shadow:var(--shadow)}
+.tip b{font-weight:700}
+.tip .tg{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;margin:6px 0;font-variant-numeric:tabular-nums}
+.tip .tg span:nth-child(2n){text-align:right;font-weight:600}
+.tip .tl{opacity:.75;font-size:12px}
+.gmx td.gc{text-align:center;font-variant-numeric:tabular-nums}
+.gmx td.gc b{font-size:15px}
+.gmx td.gc small{display:block;font-size:11px;color:var(--muted)}
+/* roles */
+.role{display:inline-flex;gap:6px;align-items:center;font-size:13px;margin-right:6px}
+.role .badge{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:2px 10px;font-weight:600}
+.role .badge.admin{background:#f2c14e;color:#1b2440;border-color:#f2c14e}
+.role button{background:none;border:0;color:var(--brand-muted);text-decoration:underline;font-size:12px;padding:0}
+.tab.adm::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#e0a92e;margin-right:6px;vertical-align:middle}
+.tabsep{flex:0 0 1px;background:var(--line);margin:8px 6px}
+/* import */
+.steps{display:grid;gap:18px}
+.step h3{display:flex;gap:10px;align-items:center}
+.step h3 .no{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:14px}
+.drop{display:block;border:2px dashed var(--line);border-radius:10px;padding:22px 16px;text-align:center;cursor:pointer;background:var(--bg)}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.files{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.fchip{display:inline-flex;gap:6px;align-items:center;background:var(--sunk);border-radius:6px;padding:3px 8px;font-size:13px;max-width:100%}
+.fchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fchip button{border:0;background:none;color:var(--s-none);padding:0 2px}
+.status{font-size:14px;margin-top:10px;padding:8px 12px;border-radius:6px;background:var(--sunk)}
+.status.err{background:var(--s-none-bg);color:var(--s-none)}
+.status.busy::before{content:"";display:inline-block;width:12px;height:12px;border:2px solid var(--accent);border-right-color:transparent;border-radius:50%;margin-right:8px;vertical-align:-1px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.irow{border:1px solid var(--line);border-radius:8px;background:var(--surface);margin-bottom:10px}
+.irow.off{opacity:.5}
+.ihead2{display:grid;grid-template-columns:auto minmax(0,200px) 80px minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.trow{display:grid;grid-template-columns:20px minmax(0,1fr) 150px minmax(0,190px) auto;gap:8px;align-items:center;padding:6px 12px}
+.trow [data-assign]{overflow:hidden;text-overflow:ellipsis;text-align:left}
+.trow .bul{color:var(--muted);text-align:center}
+@media (max-width:640px){.ihead2{grid-template-columns:auto 1fr auto}.ihead2 .ig{grid-column:2/4}.ihead2 .ic{grid-column:2/3}.ihead2 .in{grid-column:1/4}
+  .trow{grid-template-columns:1fr auto}.trow .bul{display:none}.trow input[type=date],.trow [data-assign]{grid-column:1/2}}
+@media (max-width:560px){.task{grid-template-columns:1fr}.dots{justify-content:flex-start}}
+@media (prefers-reduced-motion:no-preference){.panel{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(30px);opacity:.6}}}
+</style>
+
+<script src="config.js"></script>
+<script src="js/api.js"></script>
+</head>
+<body>
+<div id="app">
+  <header class="sysbar"><div class="inner">
+    <div>
+      <div class="org">ศูนย์ส่งเสริมการเรียนรู้ระดับอำเภอเมืองหนองบัวลำภู (สกร.)</div>
+      <h1>ระบบติดตามภาระงานและการส่งงานบุคลากร</h1>
+    </div>
+    <div class="fybox">
+      <span id="role" class="role"></span>
+      <label for="fy">ปีงบประมาณ</label>
+      <select id="fy" class="fysel"></select>
+      <button class="btn-on-brand edit-only" id="addFy" type="button">+ เพิ่มปี</button>
+    </div>
+  </div></header>
+  <section class="groupbar" aria-label="กลุ่มงาน"><div class="inner">
+    <div class="gb-label">กลุ่มงาน</div>
+    <div class="chips" id="groups"></div>
+  </div></section>
+  <div class="inner">
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+    <main id="view"><div class="notice">กำลังเชื่อมต่อฐานข้อมูล… ตารางบุคลากรและงานของปีงบประมาณจะแสดงที่นี่</div></main>
+  </div>
+</div>
+<div id="layer"></div>
+<div id="poplayer"></div>
+<div id="asslayer"></div>
+<div id="tip" class="tip" hidden></div>
+
+<script>
+(function(){
+const STATUS = [
+  {k:"on", label:"ส่งครบ ตรงเวลา"},
+  {k:"partial", label:"ส่งไม่ครบ / ไม่ตามกำหนด"},
+  {k:"late", label:"ส่งล่าช้า"},
+  {k:"none", label:"ละเลย / ไม่ส่ง"}
+];
+const GROUPS_FIXED = ["การเงิน","พัสดุ","การจัดการเรียนรู้เพื่อคุณวุฒิตามระบบ","การจัดการเรียนรู้เพื่อพัฒนาตนเอง","การจัดการเรียนรู้ตลอดชีวิต","กลุ่มงานภาคีเครือข่าย"];
+const UNGROUPED = "อื่นๆ (ไม่ระบุกลุ่ม)";
+const DEFAULT_SCORE = {on:1, partial:0.5, late:0, none:-1};
+const S = {db:null, canEdit:false, staff:[], years:[], fy:null, indicators:[], tasks:[], scoring:{...DEFAULT_SCORE}, customGroups:[],
+  tab:"grid", group:"", isAdmin:false, viewAsUser:false, taskFilter:"", assignPop:null, sample:null, sampleCaps:null,
+  imp:{files:[], text:"", group:"", items:null, status:"", err:false, busy:false, src:{}, attach:true}, assets:null, sort:{k:"order",dir:1}, q:"", posFilter:"", panel:null, armed:null, pop:null, addingGroup:false,
+  loaded:{staff:false,tasks:false}};
+let unsubFy = [];
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => (Math.round(n*100)/100).toLocaleString("th-TH",{maximumFractionDigits:2});
+const fmtScore = n => n<0 ? "−"+fmt(-n) : fmt(n);
+const thDate = d => { if(!d) return "—"; const x=new Date(d+"T00:00:00"); return isNaN(x)?d:x.toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"}); };
+const currentFY = () => { const d=new Date(); return String((d.getMonth()>=9? d.getFullYear()+1 : d.getFullYear())+543); };
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2400); }
+function fail(e){ console.error(e); const c=e&&e.code; toast(c==="quota_exceeded"?"ฐานข้อมูลเต็ม: ลบงานเก่าที่ไม่ใช้ก่อน":c==="invalid_argument"?"บันทึกไม่ได้: บัญชีนี้ไม่มีสิทธิ์แก้ไข":"บันทึกไม่สำเร็จ ลองอีกครั้ง"); }
+const staffById = id => S.staff.find(s=>s.id===id);
+const activeStaff = () => S.staff.filter(s=>s.active!==false);
+const indById = id => S.indicators.find(i=>i.id===id);
+const scoreOf = k => (k && S.scoring[k]!=null) ? Number(S.scoring[k]) : null;
+const groupOfInd = i => (i && i.group) ? i.group : UNGROUPED;
+const allGroups = () => { const g=[...GROUPS_FIXED, ...S.customGroups.filter(x=>!GROUPS_FIXED.includes(x))];
+  S.indicators.forEach(i=>{ if(i.group && !g.includes(i.group)) g.push(i.group); }); return g; };
+const visInds = () => sortedIndicators().filter(i=> !S.group || groupOfInd(i)===S.group);
+const visTasks = () => { const ids=new Set(visInds().map(i=>i.id)); return S.tasks.filter(t=> !S.group ? true : ids.has(t.indicatorId) || (S.group===UNGROUPED && !indById(t.indicatorId))); };
+function sortedIndicators(){ return [...S.indicators].sort((a,b)=>(a.code||"").localeCompare(b.code||"","th",{numeric:true}) || (a.created||0)-(b.created||0)); }
+const sortTasks = list => [...list].sort((a,b)=>{ const ia=indById(a.indicatorId), ib=indById(b.indicatorId);
+  return (ia?.code||"~").localeCompare(ib?.code||"~","th",{numeric:true}) || (a.due||"9").localeCompare(b.due||"9") || (a.created||0)-(b.created||0); });
+
+const shortName = n => String(n||"").replace(/^(นางสาว|นาง|นาย|น\.ส\.)\s*/,"");
+const todayISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+function taskProg(t){ const a=t.assignees||[], r=t.results||{}; let sub=0, ev=0;
+  a.forEach(id=>{ const k=r[id]&&r[id].status; if(k) ev++; if(k && k!=="none") sub++; });
+  const state = !a.length? "unassigned" : sub===a.length? "done" : "incomplete";
+  return {n:a.length, sub, ev, state, overdue: !!(t.due && t.due<todayISO() && state==="incomplete")}; }
+/* ---------- stats ---------- */
+function personStats(tasks){
+  const m = {};
+  S.staff.forEach(s=> m[s.id] = {s, tasks:0, on:0, partial:0, late:0, none:0, wait:0, score:0, byInd:{}, byGroup:{}, list:[]});
+  tasks.forEach(t=>{
+    (t.assignees||[]).forEach(id=>{
+      const p = m[id]; if(!p) return;
+      p.tasks++; p.byInd[t.indicatorId]=(p.byInd[t.indicatorId]||0)+1;
+      const g=groupOfInd(indById(t.indicatorId)); const bg=p.byGroup[g]=p.byGroup[g]||{inds:new Set(), tasks:0}; bg.inds.add(t.indicatorId); bg.tasks++;
+      const r = (t.results||{})[id]||{};
+      if(r.status && DEFAULT_SCORE.hasOwnProperty(r.status)){ p[r.status]++; p.score += scoreOf(r.status); } else p.wait++;
+      p.list.push({t, r});
+    });
+  });
+  Object.values(m).forEach(p=>{ p.nInd=Object.keys(p.byInd).length; const ev=p.tasks-p.wait; p.evaluated=ev; p.avg = ev? p.score/ev : null; p.onPct = ev? p.on/ev*100 : null; });
+  return m;
+}
+function loadChip(n, avg){
+  if(n===0) return '<span class="chip c-zero">ยังไม่มีงาน</span>';
+  if(avg>0 && n>=avg*1.5) return '<span class="chip c-high">งานมาก</span>';
+  if(avg>0 && n<=avg*0.5) return '<span class="chip c-low">งานน้อย</span>';
+  return "";
+}
+function pillFor(t, sid){
+  const a=(t.assignees||[]).includes(sid); if(!a) return '<span class="plus" aria-hidden="true">+</span>';
+  const r=(t.results||{})[sid]; const k=r&&r.status;
+  if(!k) return '<span class="pill p-wait">รอ</span>';
+  return `<span class="pill p-${k}">${fmtScore(scoreOf(k))}</span>`;
+}
+
+/* ---------- hover summary ---------- */
+const canHover = matchMedia("(hover: hover)").matches;
+function tipHtml(sid, tid){
+  const s=staffById(sid); if(!s) return "";
+  const vis=personStats(visTasks())[sid], all=personStats(S.tasks)[sid];
+  const groups=Object.entries(all.byGroup).sort((a,b)=>b[1].tasks-a[1].tasks);
+  let task=""; if(tid){ const t=S.tasks.find(x=>x.id===tid); const r=t&&(t.results||{})[sid]; const k=r&&r.status;
+    if(t && (t.assignees||[]).includes(sid)) task=`<div class="tl" style="margin-top:6px">งานนี้: ${esc(t.name)} — ${k?STATUS.find(x=>x.k===k).label+" ("+fmtScore(scoreOf(k))+")":"รอประเมิน"}</div>`; }
+  return `<b>${esc(s.name)}</b><div>รับผิดชอบ <b>${all.tasks}</b> งาน · <b>${all.nInd}</b> ตัวชี้วัด <span class="tl">(ปีงบ ${esc(S.fy)})</span></div>
+    ${S.group?`<div class="tl">เฉพาะ${esc(S.group)}: ${vis.tasks} งาน · ${vis.nInd} ตัวชี้วัด</div>`:""}
+    ${groups.length?`<div class="tg">${groups.map(([g,v])=>`<span>${esc(g)}</span><span>${v.inds.size} ตัวชี้วัด · ${v.tasks} งาน</span>`).join("")}</div>`:""}
+    <div>คะแนนรวม <b>${fmtScore(all.score)}</b>${all.avg!=null?` · เฉลี่ย ${fmtScore(all.avg)}`:""}</div>
+    <div class="tl">ครบตรงเวลา ${all.on} · ไม่ครบ ${all.partial} · ล่าช้า ${all.late} · ไม่ส่ง ${all.none} · รอ ${all.wait}</div>${task}`;
+}
+function showTip(el, e){ const tip=$("#tip"); const [sid,tid]=el.dataset.tip.split("|"); const h=tipHtml(sid,tid); if(!h) return;
+  tip.innerHTML=h; tip.hidden=false; moveTip(e); }
+function moveTip(e){ const tip=$("#tip"); if(tip.hidden) return; const w=tip.offsetWidth, h=tip.offsetHeight;
+  let x=e.clientX+14, y=e.clientY+16; if(x+w>innerWidth-8) x=e.clientX-w-14; if(y+h>innerHeight-8) y=e.clientY-h-12;
+  tip.style.left=Math.max(8,x)+"px"; tip.style.top=Math.max(8,y)+"px"; }
+const hideTip=()=>{ const t=$("#tip"); if(t) t.hidden=true; };
+if(canHover){
+  document.addEventListener("mouseover", e=>{ const el=e.target.closest?.("[data-tip]"); if(el) showTip(el,e); else hideTip(); });
+  document.addEventListener("mousemove", e=>{ if(e.target.closest?.("[data-tip]")) moveTip(e); });
+  document.addEventListener("mousedown", hideTip, true);
+}
+
+/* ---------- render ---------- */
+function render(){
+  S.canEdit = S.isAdmin && !S.viewAsUser;
+  if(!S.canEdit && ADMIN_TABS.includes(S.tab)) S.tab="grid";
+  document.getElementById("app").classList.toggle("ro", !S.canEdit);
+  renderTabs(); renderRole(); renderFySelect(); renderGroups();
+  const v = $("#view");
+  const mx = v.querySelector(".mx"); const keep = mx? [mx.scrollLeft, mx.scrollTop] : null;
+  if(!NFE.configured){ v.innerHTML = '<div class="notice">ยังไม่ได้เชื่อมฐานข้อมูล: ใส่ URL ของ Google Apps Script ในไฟล์ <b>config.js</b> (ดูวิธีใน README)</div>'; return; }
+  if(NFE.store.error && NFE.store.error.code==="view" && !NFE.store.loaded){ v.innerHTML = `<form class="card" id="viewForm" style="max-width:420px"><h3>ใส่รหัสเข้าดู</h3><p class="mini">ระบบนี้ตั้งรหัสสำหรับเปิดดูไว้ ขอรหัสได้จากผู้ดูแลระบบ</p><div class="form"><input type="password" id="viewPass" placeholder="รหัสเข้าดู" required><button class="btn pri" type="submit">เข้าดู</button></div></form>`; return; }
+  if(NFE.store.error && !NFE.store.loaded){ v.innerHTML = '<div class="notice">เชื่อมต่อฐานข้อมูลไม่ได้ ตรวจสอบ URL ใน config.js และการตั้งค่าเว็บแอป (ผู้มีสิทธิ์เข้าถึง: ทุกคน) แล้วโหลดหน้าใหม่</div>'; return; }
+  if(!S.db || !NFE.store.loaded){ v.innerHTML = '<div class="notice">กำลังโหลดข้อมูล…</div>'; return; }
+  if(S.tab==="grid") v.innerHTML = viewGrid();
+  else if(S.tab==="report") v.innerHTML = viewReport();
+  else if(S.tab==="manage") v.innerHTML = viewTasks();
+  else if(S.tab==="import") v.innerHTML = viewImport();
+  else v.innerHTML = viewStaff();
+  const mx2 = v.querySelector(".mx"); if(mx2 && keep){ mx2.scrollLeft=keep[0]; mx2.scrollTop=keep[1]; }
+  const q=$("#q"); if(q && document.activeElement?.id!=="q") q.value=S.q;
+  if(S.panel && S.panel.type==="task") captureTask();
+  renderPanel(); renderPop(); renderAssign();
+}
+const ADMIN_TABS=["import","settings"];
+function renderTabs(){
+  const tabs=[["grid","ตารางคะแนน"],["manage","งานและผู้รับผิดชอบ"],["report","รายงานประจำปี"]];
+  const adm=[["import","นำเข้าจากไฟล์"],["settings","ตั้งค่า"]];
+  const b=([k,l],a)=>`<button class="tab${a?" adm":""}" role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}</button>`;
+  const html = tabs.map(t=>b(t)).join("") + (S.canEdit? '<span class="tabsep" aria-hidden="true"></span>'+adm.map(t=>b(t,1)).join("") : "");
+  const el=$("#tabs"); if(el.innerHTML!==html) el.innerHTML=html;
+}
+function renderRole(){
+  const el=$("#role"); if(!S.db){ el.innerHTML=""; return; }
+  el.innerHTML = S.isAdmin
+    ? (S.viewAsUser? `<span class="badge">มุมมองผู้ใช้ทั่วไป</span><button type="button" id="roleToggle">กลับเป็นผู้ดูแล</button>`
+                   : `<span class="badge admin">ผู้ดูแลระบบ</span><button type="button" id="roleToggle">ดูแบบผู้ใช้ทั่วไป</button><button type="button" id="logout">ออกจากระบบ</button>`)
+    : `<span class="badge">ผู้ใช้ทั่วไป · ดูอย่างเดียว</span><button type="button" id="loginBtn">เข้าสู่ระบบผู้ดูแล</button>`;
+}
+function renderFySelect(){
+  const sel=$("#fy"); const ys = new Set(S.years.map(y=>y.id)); ys.add(S.fy);
+  const list=[...ys].filter(Boolean).sort((a,b)=>b.localeCompare(a));
+  const html = list.map(y=>`<option value="${esc(y)}" ${y===S.fy?"selected":""}>${esc(y)}</option>`).join("");
+  if(sel.innerHTML!==html) sel.innerHTML=html;
+}
+function renderGroups(){
+  const el=$("#groups"); if(document.activeElement?.id==="newGroup") return;
+  const cnt = g => { const ids=new Set(S.indicators.filter(i=>groupOfInd(i)===g).map(i=>i.id)); return S.tasks.filter(t=>ids.has(t.indicatorId)).length; };
+  const gs = allGroups();
+  const hasUngrouped = S.indicators.some(i=>!i.group) || S.tasks.some(t=>!indById(t.indicatorId));
+  const chip = (g,label,n) => `<button type="button" class="gchip" data-group="${esc(g)}" aria-pressed="${S.group===g}">${esc(label)}<span class="n">${n}</span></button>`;
+  el.innerHTML = chip("","ทุกกลุ่มงาน",S.tasks.length) + gs.map(g=>chip(g,g,cnt(g))).join("") +
+    (hasUngrouped? chip(UNGROUPED,UNGROUPED,S.tasks.filter(t=>{const i=indById(t.indicatorId); return !i||!i.group;}).length):"") +
+    (S.canEdit? (S.addingGroup? `<form class="gadd" id="groupForm"><input type="text" id="newGroup" placeholder="ชื่อกลุ่มงานอื่นๆ" required><button class="btn sm pri" type="submit">เพิ่ม</button><button class="btn sm" type="button" id="cancelGroup">ยกเลิก</button></form>`
+      : `<button type="button" class="gchip add" id="addGroup">+ อื่นๆ (ระบุ)</button>`) : "");
+  if(S.addingGroup) setTimeout(()=>$("#newGroup")?.focus(),0);
+}
+
+function staffRowsFor(tasks){
+  const assigned=new Set(tasks.flatMap(t=>t.assignees||[]));
+  return [...S.staff].sort((a,b)=>(a.order||0)-(b.order||0))
+    .filter(s=> s.active!==false || assigned.has(s.id))
+    .filter(s=> !S.posFilter || (s.position||"ไม่ระบุตำแหน่ง")===S.posFilter)
+    .filter(s=> !S.q || (s.name||"").includes(S.q));
+}
+function filterBar(extra=""){
+  const positions = [...new Set(S.staff.map(s=>s.position||"ไม่ระบุตำแหน่ง"))];
+  return `<input type="search" id="q" placeholder="ค้นหาชื่อ" aria-label="ค้นหาชื่อ">
+    <select id="posf" aria-label="กรองตามตำแหน่ง"><option value="">ทุกตำแหน่ง</option>${positions.map(p=>`<option ${p===S.posFilter?"selected":""}>${esc(p)}</option>`).join("")}</select>${extra}`;
+}
+
+function viewGrid(){
+  if(!S.loaded.staff || !S.loaded.tasks) return '<div class="notice">กำลังโหลดข้อมูลปีงบประมาณ '+esc(S.fy)+'…</div>';
+  const tasks = sortTasks(visTasks());
+  const gName = S.group || "ทุกกลุ่มงาน";
+  if(!tasks.length) return `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)}</h2></div>
+    <div class="notice">${S.indicators.length? "กลุ่มงานนี้ยังไม่มีงาน" : "ปีงบประมาณ "+esc(S.fy)+" ยังไม่มีตัวชี้วัดและงาน"} ${S.canEdit? " — ผู้ดูแลระบบเพิ่มได้ที่แท็บ “นำเข้าจากไฟล์” หรือ “งานและผู้รับผิดชอบ” งานจะปรากฏเป็นคอลัมน์ในตารางนี้ แล้วคลิกช่องของแต่ละคนเพื่อมอบหมายและเลือกคะแนน" : " — รอผู้ดูแลระบบเพิ่มงาน"}</div>`;
+  const rows = staffRowsFor(tasks);
+  const st = personStats(tasks);
+  // indicator header spans
+  const spans=[]; tasks.forEach(t=>{ const last=spans[spans.length-1]; if(last && last.id===t.indicatorId) last.n++; else spans.push({id:t.indicatorId,n:1}); });
+  const sel = S.pop ? S.pop.tid+"|"+S.pop.sid : "";
+  const head1 = spans.map(sp=>{ const i=indById(sp.id); return `<th class="ihead" colspan="${sp.n}" title="${esc(i?(i.code+" "+i.name):"ไม่มีตัวชี้วัด")}"><div class="ihwrap">${i?esc(i.code)+" <span style='color:var(--muted);font-family:var(--f-body);font-weight:500'>"+esc(i.name)+"</span>":"ไม่มีตัวชี้วัด"}</div></th>`; }).join("");
+  const head2 = tasks.map(t=>`<th class="tcol" data-task="${esc(t.id)}" title="${esc(t.name)}"><div class="tname">${esc(t.name)}</div><div class="tdue">ส่ง ${thDate(t.due)} · ${(()=>{const p=taskProg(t); return p.n? `<span style="color:${p.state==="done"?"var(--s-on)":p.overdue?"var(--s-none)":"inherit"}">ส่งแล้ว ${p.sub}/${p.n}</span>` : '<span style="color:var(--s-none)">ยังไม่ระบุคน</span>';})()}</div></th>`).join("");
+  const body = rows.map(s=>{ const p=st[s.id];
+    return `<tr><td class="who sticky" data-person="${esc(s.id)}"><div class="nm">${esc(s.name)}</div><div class="pos">${esc(s.position||"")}</div></td>`+
+      tasks.map(t=>{ const key=t.id+"|"+s.id; return `<td class="cell${key===sel?" sel":""}" data-cell="${esc(key)}" ${(t.assignees||[]).includes(s.id)?`data-tip="${esc(s.id+"|"+t.id)}"`:""} tabindex="0">${pillFor(t,s.id)}</td>`; }).join("")+
+      `<td class="tot" data-tip="${esc(s.id)}">${p.tasks||"·"}</td><td class="tot" data-tip="${esc(s.id)}">${p.nInd||"·"}</td><td class="tot ${p.score<0?"neg":""}" data-tip="${esc(s.id)}">${p.tasks?fmtScore(p.score):"·"}</td></tr>`; }).join("");
+  return `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)} <span class="mini">(${tasks.length} งาน)</span></h2>${filterBar()}</div>
+  <div class="mx"><table>
+    <thead><tr><th class="sticky" rowspan="2" style="vertical-align:bottom;padding:6px 10px">บุคลากร (${rows.length} คน)</th>${head1}<th class="tot" rowspan="2">งาน</th><th class="tot" rowspan="2">ตัวชี้วัด</th><th class="tot" rowspan="2">คะแนน</th></tr>
+    <tr>${head2}</tr></thead>
+    <tbody>${body || `<tr><td class="empty" colspan="${tasks.length+4}">ไม่พบบุคลากรตามเงื่อนไข</td></tr>`}</tbody>
+  </table></div>
+  <div class="legend">${STATUS.map(x=>`<span><span class="pill p-${x.k}">${fmtScore(S.scoring[x.k])}</span> ${x.label}</span>`).join("")}
+    <span><span class="pill p-wait">รอ</span> มอบหมายแล้ว รอประเมิน</span><span>ช่องว่าง = ไม่ได้รับผิดชอบ · ชี้เมาส์ที่คะแนนเพื่อดูว่ารับผิดชอบกี่งาน/กี่ตัวชี้วัด · คลิกช่องเพื่อดูงานและเลือกคะแนน · คลิกชื่อเพื่อดูงานทั้งหมด</span></div>`;
+}
+
+function renderPop(){
+  const L=$("#poplayer"); const p=S.pop;
+  if(!p){ L.innerHTML=""; return; }
+  const t=S.tasks.find(x=>x.id===p.tid), s=staffById(p.sid);
+  if(!t||!s){ S.pop=null; L.innerHTML=""; return; }
+  const i=indById(t.indicatorId); const assigned=(t.assignees||[]).includes(s.id);
+  const r=(t.results||{})[s.id]||{}; const ro=!S.canEdit;
+  const lateDays = (r.date && t.due && r.date>t.due) ? Math.round((new Date(r.date)-new Date(t.due))/864e5) : 0;
+  L.innerHTML = `<div class="pop" role="dialog" aria-label="งานของ ${esc(s.name)}">
+    <div class="pwho">${assigned?"ผู้รับผิดชอบ":"ยังไม่ได้มอบหมายให้"} <b>${esc(s.name)}</b></div>
+    <div class="ptitle">${esc(t.name)}</div>
+    <div class="pmeta">${i?esc(i.code)+" "+esc(i.name)+" · "+esc(groupOfInd(i))+"<br>":""}กำหนดส่ง ${thDate(t.due)} · ผู้รับผิดชอบ ${(t.assignees||[]).length} คน${t.note?"<br>"+esc(t.note):""}</div>
+    ${ro? (assigned? `<div class="mini">ผล: ${r.status?`<span class="st st-${r.status}">${STATUS.find(x=>x.k===r.status).label}</span> (${fmtScore(scoreOf(r.status))} คะแนน)`:"รอประเมิน"}</div>`:"")
+    : `<div class="choices">${STATUS.map(x=>`<button type="button" class="choice ${x.k}" data-pick-st="${x.k}" aria-pressed="${assigned&&r.status===x.k}"><span class="sc pill p-${x.k}">${fmtScore(S.scoring[x.k])}</span><span class="lb">${x.label}</span></button>`).join("")}</div>
+      ${assigned?`<div class="pfields"><label for="popDate">วันที่ส่ง</label><span><input type="date" id="popDate" value="${esc(r.date||"")}"> ${lateDays>0?`<span class="hint">ช้า ${lateDays} วัน</span>`:""}</span>
+        <label for="popNote">หมายเหตุ</label><input type="text" id="popNote" value="${esc(r.note||"")}"></div>`:`<p class="mini" style="margin:0 0 10px">เลือกคะแนนเพื่อมอบหมายพร้อมบันทึกผล หรือกด “มอบหมายงานนี้” เพื่อมอบหมายไว้ก่อน</p>`}
+      <div class="pfoot">${assigned?`<button type="button" class="btn sm" id="popClear">ล้างผล</button><button type="button" class="btn sm danger" id="popUnassign">ยกเลิกมอบหมาย</button>`
+        :`<button type="button" class="btn sm pri" id="popAssign">มอบหมายงานนี้</button>`}
+        <button type="button" class="btn sm ghost" data-task="${esc(t.id)}">เปิดงานเต็ม</button><button type="button" class="btn sm" id="popClose">ปิด</button></div>`}
+    ${ro?`<div class="pfoot" style="margin-top:10px"><button type="button" class="btn sm" id="popClose">ปิด</button></div>`:""}
+  </div>`;
+  const pop=L.firstElementChild; const cell=document.querySelector(`[data-cell="${CSS.escape(p.tid+"|"+p.sid)}"]`);
+  if(!cell && innerWidth>600){ pop.style.left=Math.max(12,(innerWidth-pop.offsetWidth)/2)+"px"; pop.style.top="90px"; }
+  if(cell && innerWidth>600){ const rc=cell.getBoundingClientRect(); const w=pop.offsetWidth, h=pop.offsetHeight;
+    let x=rc.right+8, y=rc.top-10; if(x+w>innerWidth-12) x=rc.left-w-8; if(x<12) x=Math.max(12,Math.min(innerWidth-w-12,rc.left));
+    if(y+h>innerHeight-12) y=Math.max(12,innerHeight-h-12); pop.style.left=x+"px"; pop.style.top=y+"px"; }
+}
+async function writeCell(tid,sid,patch,opts={}){
+  const t=S.tasks.find(x=>x.id===tid); if(!t) return;
+  let assignees=[...(t.assignees||[])];
+  const body={updated:Date.now()};
+  if(opts.unassign){ assignees=assignees.filter(x=>x!==sid); body.assignees=assignees; body.results={[sid]:null}; }
+  else { if(!assignees.includes(sid)){ assignees.push(sid); body.assignees=assignees; }
+    if(patch) body.results={[sid]:{status:null,date:"",note:"",...((t.results||{})[sid]||{}),...patch}}; }
+  try{ await S.db.doc("tasks/"+tid).update(body); }catch(err){ fail(err); }
+}
+
+function viewReport(){
+  if(!S.loaded.staff || !S.loaded.tasks) return '<div class="notice">กำลังโหลดข้อมูลปีงบประมาณ '+esc(S.fy)+'…</div>';
+  const tasks = visTasks();
+  const st = personStats(tasks);
+  const act = activeStaff();
+  const assignments = tasks.reduce((a,t)=>a+(t.assignees||[]).length,0);
+  const evaluated = Object.values(st).reduce((a,p)=>a+p.evaluated,0);
+  const avg = act.length? assignments/act.length : 0;
+  const zero = act.filter(s=>st[s.id].tasks===0).length;
+  let rows = staffRowsFor(tasks);
+  const k=S.sort.k, d=S.sort.dir;
+  const val = s => k==="order"? (s.order||0) : k==="name"? (s.name||"") : (st[s.id][k] ?? -999);
+  rows.sort((a,b)=>{ const x=val(a), y=val(b); return (typeof x==="string"? x.localeCompare(y,"th") : x-y)*d; });
+  const max = Math.max(1, ...Object.values(st).map(p=>p.tasks));
+  const th = (key,label,cls="") => `<th class="sortable ${cls}" data-sort="${key}">${label}${S.sort.k===key?(S.sort.dir>0?" ▲":" ▼"):""}</th>`;
+  const body = rows.map((s,i)=>{ const p=st[s.id];
+    return `<tr class="click" data-person="${esc(s.id)}">
+      <td class="num">${i+1}</td>
+      <td><div class="nm" style="white-space:nowrap">${esc(s.name)}</div><div class="pos" style="white-space:nowrap">${esc(s.position||"")}${s.active===false?" · พ้นสภาพ":""}</div></td>
+      <td data-tip="${esc(s.id)}"><div class="load"><b>${p.tasks}</b><div class="track"><div class="fill" style="width:${p.tasks/max*100}%"></div></div></div>${loadChip(p.tasks,avg)}</td>
+      <td class="num" data-tip="${esc(s.id)}">${p.nInd||"·"}</td>
+      <td class="num">${p.on||"·"}</td><td class="num">${p.partial||"·"}</td><td class="num">${p.late||"·"}</td><td class="num">${p.none||"·"}</td><td class="num">${p.wait||"·"}</td>
+      <td class="num score ${p.score<0?"neg":""}" data-tip="${esc(s.id)}">${fmtScore(p.score)}</td>
+      <td class="num">${p.avg==null?"—":fmtScore(p.avg)}</td>
+      <td class="num">${p.onPct==null?"—":fmt(p.onPct)+"%"}</td></tr>`; }).join("");
+  let groupTable="";
+  if(!S.group){
+    const gs=[...allGroups()]; if(S.indicators.some(i=>!i.group)||S.tasks.some(t=>!indById(t.indicatorId))) gs.push(UNGROUPED);
+    const gUsed=gs.filter(g=>rows.some(s=>st[s.id].byGroup[g]));
+    groupTable += `<h2 style="margin:26px 0 4px">ตัวชี้วัดที่รับผิดชอบ แยกตามกลุ่มงาน</h2><p class="mini" style="margin:0 0 10px">ตัวเลขใหญ่ = จำนวนตัวชี้วัด · ตัวเล็ก = จำนวนงาน</p>
+      <div class="tablebox"><table class="std gmx"><thead><tr><th>ชื่อ-สกุล</th>${gUsed.map(g=>`<th class="num" style="white-space:normal;min-width:96px;text-align:center!important">${esc(g)}</th>`).join("")}<th class="num">รวมตัวชี้วัด</th><th class="num">รวมงาน</th></tr></thead><tbody>`+
+      (gUsed.length? rows.map(s=>{ const p=st[s.id]; return `<tr class="click" data-person="${esc(s.id)}"><td class="nm" style="white-space:nowrap" data-tip="${esc(s.id)}">${esc(s.name)}</td>${gUsed.map(g=>{ const v=p.byGroup[g]; return `<td class="gc">${v?`<b>${v.inds.size}</b><small>${v.tasks} งาน</small>`:"·"}</td>`; }).join("")}<td class="num score" data-tip="${esc(s.id)}">${p.nInd||"·"}</td><td class="num" data-tip="${esc(s.id)}">${p.tasks||"·"}</td></tr>`; }).join("")
+        : `<tr><td class="empty" colspan="3">ยังไม่มีการมอบหมายงาน</td></tr>`)+`</tbody></table></div>`;
+    groupTable += `<h2 style="margin:26px 0 10px">สรุปตามกลุ่มงาน</h2><div class="tablebox"><table class="std"><thead><tr><th>กลุ่มงาน</th><th class="num">ตัวชี้วัด</th><th class="num">งาน</th><th class="num">ผู้รับผิดชอบ (คน)</th><th class="num">คน-งาน</th><th class="num">ประเมินแล้ว</th><th class="num">คะแนนเฉลี่ย</th></tr></thead><tbody>`+
+      gs.map(g=>{ const inds=S.indicators.filter(i=>groupOfInd(i)===g); const ids=new Set(inds.map(i=>i.id));
+        const ts=S.tasks.filter(t=>ids.has(t.indicatorId)||(g===UNGROUPED&&!indById(t.indicatorId)));
+        let a=0,ev=0,sc=0; const ppl=new Set();
+        ts.forEach(t=>(t.assignees||[]).forEach(id=>{ a++; ppl.add(id); const r=(t.results||{})[id]; if(r&&r.status){ ev++; sc+=scoreOf(r.status); } }));
+        return `<tr class="click" data-group="${esc(g)}"><td class="nm">${esc(g)}</td><td class="num">${inds.length}</td><td class="num">${ts.length}</td><td class="num">${ppl.size}</td><td class="num">${a}</td><td class="num">${a?fmt(ev/a*100)+"%":"—"}</td><td class="num">${ev?fmtScore(sc/ev):"—"}</td></tr>`; }).join("")+`</tbody></table></div>`;
+  }
+  return `
+  <div class="tiles">
+    <div class="tile"><div class="k">งาน${S.group?" ในกลุ่มนี้":"ทั้งหมด"}</div><div class="v">${tasks.length} <small>งาน · ${visInds().length} ตัวชี้วัด</small></div></div>
+    <div class="tile"><div class="k">การมอบหมาย (คน-งาน)</div><div class="v">${assignments}</div></div>
+    <div class="tile"><div class="k">เฉลี่ยงานต่อคน</div><div class="v">${fmt(avg)} <small>จาก ${act.length} คน</small></div></div>
+    <div class="tile"><div class="k">ยังไม่ได้รับมอบหมาย</div><div class="v">${zero} <small>คน</small></div></div>
+    <div class="tile"><div class="k">ประเมินแล้ว</div><div class="v">${assignments?fmt(evaluated/assignments*100):0}<small>%</small></div></div>
+  </div>
+  <div class="bar"><h2 class="grow">ภาระงานรายบุคคล ปีงบประมาณ ${esc(S.fy)}${S.group?" · "+esc(S.group):""}</h2>${filterBar('<button class="btn" id="csv" type="button">ดาวน์โหลด CSV</button>')}</div>
+  <div class="tablebox"><table class="std">
+    <thead><tr>${th("order","ที่","num")}${th("name","ชื่อ-สกุล / ตำแหน่ง")}${th("tasks","จำนวนงาน")}${th("nInd","ตัวชี้วัด","num")}
+    ${th("on","ครบ ตรงเวลา","num")}${th("partial","ไม่ครบ/ไม่ตามกำหนด","num")}${th("late","ล่าช้า","num")}${th("none","ไม่ส่ง","num")}${th("wait","รอประเมิน","num")}
+    ${th("score","คะแนนรวม","num")}${th("avg","เฉลี่ย/งาน","num")}${th("onPct","ตรงเวลา","num")}</tr></thead>
+    <tbody>${body || `<tr><td colspan="12" class="empty">ไม่พบบุคลากรตามเงื่อนไข</td></tr>`}</tbody>
+  </table></div>
+  <div class="legend"><span>ชี้เมาส์ที่จำนวนงานหรือคะแนนเพื่อดูรายละเอียด · “งานมาก” = ตั้งแต่ 1.5 เท่าของค่าเฉลี่ย · “งานน้อย” = ไม่เกินครึ่งหนึ่งของค่าเฉลี่ย · คลิกชื่อเพื่อดูรายละเอียด</span></div>
+  ${groupTable}`;
+}
+
+function groupSelect(id, value){
+  const gs=allGroups(); const v=value||"";
+  return `<select id="${id}" aria-label="กลุ่มงาน">${gs.map(g=>`<option ${g===v?"selected":""}>${esc(g)}</option>`).join("")}<option value="__other" ${v&&!gs.includes(v)?"selected":""}>อื่นๆ (ระบุ)…</option></select>`;
+}
+function viewTasks(){
+  if(!S.loaded.staff || !S.loaded.tasks) return '<div class="notice">กำลังโหลดข้อมูลปีงบประมาณ '+esc(S.fy)+'…</div>';
+  const inds = visInds();
+  const prevFy = String(Number(S.fy)-1);
+  const defGroup = S.group && S.group!==UNGROUPED ? S.group : GROUPS_FIXED[0];
+  const addForm = `<div class="card edit-only" style="margin-bottom:8px"><h3>เพิ่มตัวชี้วัดย่อย</h3>
+    <form class="form" id="indForm">${groupSelect("indGroup",defGroup)}<input type="text" id="indOther" placeholder="ระบุชื่อกลุ่มงาน" hidden>
+    <input type="text" id="indCode" placeholder="รหัส เช่น 1.1" style="flex:0 1 110px" required>
+    <input type="text" id="indName" placeholder="ชื่อตัวชี้วัดย่อย" required><button class="btn pri" type="submit">เพิ่ม</button></form>
+    ${S.indicators.length===0?`<p class="mini" style="margin:10px 0 0">หรือ <button class="btn sm" type="button" id="copyInd">คัดลอกตัวชี้วัดจากปีงบประมาณ ${esc(prevFy)}</button> (เฉพาะชื่อตัวชี้วัดและกลุ่มงาน ไม่คัดลอกงาน)</p>`:""}</div>`;
+  const all = visTasks(); const cnt={unassigned:0,incomplete:0,done:0}; all.forEach(t=>cnt[taskProg(t).state]++);
+  const fchip=(k,l,n)=>`<button type="button" class="gchip" data-tfilter="${k}" aria-pressed="${S.taskFilter===k}">${l} <span class="n">${n}</span></button>`;
+  const head = `<div class="bar" style="margin-top:14px"><h2 class="grow">งานและผู้รับผิดชอบ${S.group?" · "+esc(S.group):""}</h2>
+    ${S.canEdit?'<button type="button" class="btn sm" data-tab="import">นำเข้าจากไฟล์</button>':""}</div>
+    <div class="chips" style="margin-bottom:14px">${fchip("","ทั้งหมด",all.length)}${fchip("incomplete","ยังส่งไม่ครบ",cnt.incomplete)}${fchip("done","ส่งครบแล้ว",cnt.done)}${fchip("unassigned","ยังไม่ระบุผู้รับผิดชอบ",cnt.unassigned)}</div>`;
+  if(!inds.length) return addForm + head + `<div class="notice">${S.group?"กลุ่มงาน “"+esc(S.group)+"” ":""}ปีงบประมาณ ${esc(S.fy)} ยังไม่มีตัวชี้วัดย่อย${S.canEdit?" เริ่มจากเพิ่มตัวชี้วัด หรือนำเข้าจากไฟล์ แล้วกด “+ เพิ่มงาน” และเลือกผู้รับผิดชอบของแต่ละงาน":""}</div>`;
+  const pass = t => !S.taskFilter || taskProg(t).state===S.taskFilter;
+  const tasksOf = id => S.tasks.filter(t=>t.indicatorId===id && pass(t)).sort((a,b)=>(a.due||"9").localeCompare(b.due||"9") || (a.created||0)-(b.created||0));
+  const taskRow = t => { const p=taskProg(t); const a=t.assignees||[]; const r=t.results||{};
+    const badge = p.state==="unassigned"? '<span class="chip c-zero">ยังไม่ระบุผู้รับผิดชอบ</span>' : p.state==="done"? '<span class="chip c-ok">ส่งครบแล้ว</span>'
+      : `<span class="chip ${p.overdue?"c-zero":"c-high"}">${p.overdue?"เลยกำหนด · ":""}ยังไม่ส่ง ${p.n-p.sub} คน</span>`;
+    const people = a.map(id=>{ const s=staffById(id); const k=r[id]&&r[id].status;
+      return `<button type="button" class="pchip ${k?"k-"+k:"k-wait"}" data-cell="${esc(t.id+"|"+id)}" data-tip="${esc(id+"|"+t.id)}">${esc(shortName(s?.name||"(ไม่พบรายชื่อ)"))}<b>${k?fmtScore(scoreOf(k)):"รอ"}</b></button>`; }).join("");
+    return `<div class="task2"><div class="t-top"><div class="t-main" data-task="${esc(t.id)}" tabindex="0"><div class="tn">${esc(t.name)}</div>
+        <div class="tm">กำหนดส่ง ${thDate(t.due)}${p.n?` · ผู้รับผิดชอบ ${p.n} คน · ส่งแล้ว ${p.sub}/${p.n}`:""}</div></div>${badge}</div>
+      ${p.n?`<div class="prog" aria-hidden="true"><span style="width:${p.sub/p.n*100}%"></span></div>`:""}
+      <div class="people">${people}${S.canEdit?`<button type="button" class="btn sm ${p.n?"ghost":"pri"}" data-assign="${esc(t.id)}">${p.n?"+ เพิ่ม/แก้ไขผู้รับผิดชอบ":"+ เลือกผู้รับผิดชอบ"}</button>`:""}</div></div>`; };
+  const block = (ind, list) => `<section class="ind">
+    <div class="ind-h">${ind?`<span class="code">${esc(ind.code)}</span>`:""}<h3>${ind?esc(ind.name):"งานที่ไม่ได้อยู่ในตัวชี้วัด"}</h3>
+      <span class="meta">${list.length} งาน</span>
+      ${ind?`<button class="btn sm" data-docs="${esc(ind.id)}" type="button">เอกสาร/ต้นเรื่อง${(ind.docs||[]).length?` (${ind.docs.length})`:""}</button>
+      <button class="btn sm pri edit-only" data-newtask="${esc(ind.id)}" type="button">+ เพิ่มงาน</button>
+      <button class="btn sm ghost edit-only" data-editind="${esc(ind.id)}" type="button">แก้ไข</button>`:""}</div>
+    ${ind&&(ind.docs||[]).length? `<div class="origin">ต้นเรื่อง: ${originLine(ind.docs[ind.docs.length-1])}${ind.docs.length>1?` · และอีก ${ind.docs.length-1} ฉบับ`:""}</div>` : ""}
+    ${list.length? list.map(taskRow).join("") : `<div class="empty">ยังไม่มีงานในตัวชี้วัดนี้</div>`}</section>`;
+  const groupsShown = S.group? [S.group] : [...allGroups(), UNGROUPED];
+  const orphan = S.tasks.filter(t=>!indById(t.indicatorId) && pass(t));
+  const body = groupsShown.map(g=>{ const list=inds.filter(i=>groupOfInd(i)===g && (!S.taskFilter || tasksOf(i.id).length)); const extra = g===UNGROUPED && orphan.length;
+      if(!list.length && !extra) return "";
+      return `<div class="ghead">${esc(g)}</div>` + list.map(i=>block(i, tasksOf(i.id))).join("") + (extra? block(null, orphan):""); }).join("");
+  return addForm + head + (body || '<div class="notice">ไม่มีงานตามตัวกรองนี้</div>') +
+    `<div class="legend"><span class="pchip k-on">ชื่อ<b>${fmtScore(S.scoring.on)}</b></span> ครบตรงเวลา <span class="pchip k-partial">ชื่อ<b>${fmtScore(S.scoring.partial)}</b></span> ไม่ครบ/ไม่ตามกำหนด <span class="pchip k-late">ชื่อ<b>${fmtScore(S.scoring.late)}</b></span> ล่าช้า <span class="pchip k-none">ชื่อ<b>${fmtScore(S.scoring.none)}</b></span> ไม่ส่ง <span class="pchip k-wait">ชื่อ<b>รอ</b></span> รอประเมิน · ${S.canEdit?"คลิกชื่อเพื่อให้คะแนน":"คลิกชื่อเพื่อดูรายละเอียด"}</div>`;
+}
+
+/* ---------- indicator documents ---------- */
+const SOURCES=["สกร.จังหวัดหนองบัวลำภู","กรมส่งเสริมการเรียนรู้ (สกร.)","กระทรวงศึกษาธิการ","อำเภอ / ส่วนราชการในพื้นที่","องค์กรปกครองส่วนท้องถิ่น","ภาคีเครือข่าย","ภายในหน่วยงาน (คำสั่ง/มติที่ประชุม)","อื่นๆ"];
+const rid = () => Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+function originLine(d){ return [d.source?`<b>${esc(d.source)}</b>`:"", d.refNo?"ที่ "+esc(d.refNo):"", d.date?"ลว. "+thDate(d.date):"", d.subject?"เรื่อง "+esc(d.subject):""].filter(Boolean).join(" · ") || "ไม่ได้ระบุ"; }
+const UPLOAD_TYPES={pdf:"application/pdf",jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp",gif:"image/gif",txt:"text/plain",csv:"text/csv",md:"text/markdown",json:"application/json",mp4:"video/mp4"};
+const uploadType = f => UPLOAD_TYPES[(f.name.split(".").pop()||"").toLowerCase()] || (/^(image|video)\//.test(f.type)? f.type : null);
+async function uploadFiles(files){
+  const out=[], skipped=[];
+  if(!files.length) return {out, skipped};
+  if(!S.assets){ return {out, skipped: files.map(f=>f.name)}; }
+  for(const f of files){
+    try{ const r=await S.assets.upload(f); out.push({assetId:r.id, url:r.url, name:f.name, type:r.contentType, size:r.sizeBytes}); }
+    catch(err){ console.error(err); skipped.push(f.name); } }
+  return {out, skipped};
+}
+function docFields(d, pre){ return `
+  <label class="field"><span>ต้นเรื่องจาก</span><select id="${pre}source">${SOURCES.map(x=>`<option ${x===d.source?"selected":""}>${esc(x)}</option>`).join("")}${d.source&&!SOURCES.includes(d.source)?`<option selected>${esc(d.source)}</option>`:""}</select></label>
+  <div class="grid2" style="gap:12px"><label class="field"><span>เลขที่หนังสือ</span><input type="text" id="${pre}refNo" value="${esc(d.refNo||"")}" placeholder="เช่น ศธ 0210.xx/1234"></label>
+  <label class="field"><span>ลงวันที่</span><input type="date" id="${pre}date" value="${esc(d.date||"")}"></label></div>
+  <label class="field"><span>เรื่อง</span><input type="text" id="${pre}subject" value="${esc(d.subject||"")}"></label>`; }
+function panelDocs(p){
+  const ind=indById(p.id); if(!ind) return '<div class="empty">ไม่พบตัวชี้วัด</div>';
+  const docs=ind.docs||[]; const ed=p.edit;
+  const list = docs.length? [...docs].reverse().map(d=>`<div class="doccard"><div class="dsrc">${esc(d.source||"ไม่ระบุต้นเรื่อง")}</div>
+      ${d.subject?`<div class="dsub">เรื่อง ${esc(d.subject)}</div>`:""}
+      <div class="dmeta">${[d.refNo?"ที่ "+esc(d.refNo):"", d.date?"ลงวันที่ "+thDate(d.date):"", d.addedAt?"บันทึก "+new Date(d.addedAt).toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"}):""].filter(Boolean).join(" · ")}</div>
+      ${d.note?`<div style="font-size:14px;white-space:pre-wrap">${esc(d.note)}</div>`:""}
+      ${(d.files||[]).length||d.link?`<div class="flinks">${(d.files||[]).map(f=>`<a class="flink" href="${esc(f.url||("https://drive.google.com/file/d/"+f.assetId+"/view"))}" target="_blank" rel="noopener"><span>${esc(f.name)}</span></a>`).join("")}${d.link&&/^https?:\/\//.test(d.link)?`<a class="flink" href="${esc(d.link)}" target="_blank" rel="noopener noreferrer"><span>ลิงก์เอกสาร</span></a>`:""}</div>`:""}
+      <div class="edit-only" style="display:flex;gap:6px;justify-content:flex-end"><button type="button" class="btn sm ghost" data-docedit="${esc(d.id)}">แก้ไข</button>
+        <button type="button" class="btn sm ghost danger ${S.armed==="doc:"+d.id?"armed":""}" data-docdel="${esc(d.id)}">${S.armed==="doc:"+d.id?"กดอีกครั้งเพื่อลบ":"ลบ"}</button></div></div>`).join("")
+    : '<div class="notice">ยังไม่มีเอกสารต้นเรื่องของตัวชี้วัดนี้</div>';
+  const cur = ed? (docs.find(x=>x.id===ed)||{}) : {source:SOURCES[0]};
+  const form = S.canEdit? `<form class="card" id="docForm" style="margin-top:18px"><h3>${ed?"แก้ไขเอกสาร":"เพิ่มเอกสาร / ต้นเรื่อง"}</h3>
+      ${docFields(cur,"d_")}
+      <label class="field"><span>สาระสำคัญ / ข้อสั่งการ</span><textarea id="d_note" rows="3">${esc(cur.note||"")}</textarea></label>
+      <label class="field"><span>ไฟล์แนบ</span><input type="file" id="d_files" multiple></label>
+      ${(cur.files||[]).length?`<div class="flinks" style="margin:-4px 0 12px">${cur.files.map(f=>`<span class="fchip"><span>${esc(f.name)}</span><button type="button" data-dfrm="${esc(f.assetId)}" aria-label="เอาไฟล์ออก">✕</button></span>`).join("")}</div>`:""}
+      <label class="field"><span>ลิงก์เอกสาร (ถ้ามี เช่น Google Drive / ระบบสารบรรณ)</span><input type="text" id="d_link" value="${esc(cur.link||"")}" placeholder="https://"></label>
+      <p class="mini" style="margin:0 0 10px">ไฟล์แนบจะเก็บใน Google Drive ของผู้ดูแลระบบ (ไม่เกิน 20 MB ต่อไฟล์) แนบได้ทั้ง PDF, Word, Excel และรูปภาพ</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="submit" class="btn pri" ${p.busy?"disabled":""}>${p.busy?"กำลังบันทึก…":"บันทึกเอกสาร"}</button>${ed?`<button type="button" class="btn" data-docedit="">ยกเลิกแก้ไข</button>`:""}</div></form>` : "";
+  return `<p class="pos" style="margin:0 0 14px"><span style="color:var(--code);font-weight:600">${esc(ind.code)}</span> ${esc(ind.name)} · ${esc(groupOfInd(ind))}</p>${list}${form}`;
+}
+document.addEventListener("click", async e=>{
+  const t=e.target; const dc=t.closest("[data-docs]"); if(dc){ openPanel({type:"docs", id:dc.dataset.docs}); return; }
+  const p=S.panel; if(!p || p.type!=="docs") return;
+  const ed=t.closest("[data-docedit]"); if(ed){ p.edit=ed.dataset.docedit||null; p.rmFiles=[]; renderPanel(); return; }
+  const rm=t.closest("[data-dfrm]"); if(rm){ p.rmFiles=(p.rmFiles||[]).concat(rm.dataset.dfrm); rm.closest(".fchip").remove(); return; }
+  const dl=t.closest("[data-docdel]"); if(dl){ const id=dl.dataset.docdel; if(S.armed!=="doc:"+id){ S.armed="doc:"+id; renderPanel(); return; }
+    const ind=indById(p.id); try{ await S.db.doc("indicators/"+ind.id).update({docs:(ind.docs||[]).filter(x=>x.id!==id)}); S.armed=null; toast("ลบเอกสารแล้ว"); }catch(err){fail(err)} }
+});
+document.addEventListener("submit", async e=>{
+  if(e.target.id!=="docForm") return; e.preventDefault(); e.stopImmediatePropagation();
+  const p=S.panel; const ind=indById(p.id); if(!ind||!S.canEdit) return;
+  const v=id=>$("#"+id).value.trim(); const files=[...$("#d_files").files];
+  const base = p.edit? (ind.docs||[]).find(x=>x.id===p.edit)||{} : {};
+  const fields={source:v("d_source"), refNo:v("d_refNo"), date:$("#d_date").value, subject:v("d_subject"), note:v("d_note"), link:v("d_link")};
+  p.busy=true; renderPanel(); $("#d_note")&&0;
+  try{
+    const {out, skipped}=await uploadFiles(files);
+    const keep=(base.files||[]).filter(f=>!(p.rmFiles||[]).includes(f.assetId));
+    const doc={...base, ...fields, id:base.id||rid(), files:keep.concat(out), addedAt:base.addedAt||Date.now()};
+    const docs = p.edit? (ind.docs||[]).map(x=>x.id===p.edit?doc:x) : (ind.docs||[]).concat(doc);
+    await S.db.doc("indicators/"+ind.id).update({docs});
+    p.busy=false; p.edit=null; p.rmFiles=[]; renderPanel(); toast("บันทึกเอกสารแล้ว"+(skipped.length?` · แนบไม่ได้: ${skipped.join(", ")}`:""));
+  }catch(err){ p.busy=false; renderPanel(); fail(err); }
+}, true);
+
+/* ---------- assign picker ---------- */
+function assignTarget(key){ if(key.startsWith("imp:")){ const [i,j]=key.slice(4).split(".").map(Number); return {imp:true, i, j, t:S.imp.items?.[i]?.tasks?.[j]}; }
+  return {imp:false, tid:key, t:S.tasks.find(x=>x.id===key)}; }
+function assignList(a){
+  const tg=assignTarget(a.key); const ids=(tg.t&&tg.t.assignees)||[]; const f=(a.q||"").trim();
+  const groups={}; S.staff.filter(s=>s.active!==false || ids.includes(s.id)).sort((x,y)=>(x.order||0)-(y.order||0))
+    .forEach(s=>{ const g=s.position||"ไม่ระบุตำแหน่ง"; (groups[g]=groups[g]||[]).push(s); });
+  const html = Object.entries(groups).map(([g,list])=>{ const shown=list.filter(s=>!f||s.name.includes(f)); if(!shown.length) return "";
+    const all=shown.every(s=>ids.includes(s.id));
+    return `<div class="pgrp"><span>${esc(g)} (${shown.length})</span><button type="button" class="btn sm ghost" data-agrp="${esc(g)}" data-all="${all?0:1}">${all?"ยกเลิกทั้งกลุ่ม":"เลือกทั้งกลุ่ม"}</button></div>`+
+      shown.map(s=>`<label class="pitem"><input type="checkbox" data-acheck="${esc(s.id)}" ${ids.includes(s.id)?"checked":""}> ${esc(s.name)}</label>`).join(""); }).join("");
+  return html || '<div class="empty">ไม่พบรายชื่อ</div>';
+}
+function renderAssign(){
+  const L=$("#asslayer"); const a=S.assignPop; if(!a){ L.innerHTML=""; return; }
+  const tg=assignTarget(a.key); if(!tg.t){ S.assignPop=null; L.innerHTML=""; return; }
+  const ids=tg.t.assignees||[]; const focusQ=document.activeElement?.id==="assQ"; const listScroll=$("#assList")?.scrollTop;
+  L.innerHTML = `<div class="pop apop" role="dialog" aria-label="เลือกผู้รับผิดชอบ">
+    <div class="pwho">เลือกผู้รับผิดชอบ · <b id="assN">${ids.length} คน</b></div>
+    <div class="ptitle">${esc(tg.t.name||"งานใหม่")}</div>
+    <input type="search" id="assQ" placeholder="ค้นหาชื่อ" value="${esc(a.q||"")}" style="width:100%;margin:10px 0 8px" aria-label="ค้นหาชื่อ">
+    <div class="picker" id="assList">${assignList(a)}</div>
+    <div class="pfoot" style="margin-top:10px"><span class="mini">${tg.imp?"บันทึกพร้อมตอนนำเข้า":"บันทึกทันทีเมื่อติ๊ก"}</span><button type="button" class="btn sm pri" id="assDone">เสร็จ</button></div></div>`;
+  if(listScroll) $("#assList").scrollTop=listScroll;
+  if(focusQ){ const q=$("#assQ"); q.focus(); q.setSelectionRange(q.value.length,q.value.length); }
+  const pop=L.firstElementChild; const btn=document.querySelector(`[data-assign="${CSS.escape(a.key)}"]`);
+  if(btn && innerWidth>600){ const rc=btn.getBoundingClientRect(); const w=pop.offsetWidth, h=pop.offsetHeight;
+    let x=Math.min(rc.left, innerWidth-w-12), y=rc.bottom+6; if(y+h>innerHeight-12) y=Math.max(12, rc.top-h-6);
+    pop.style.left=Math.max(12,x)+"px"; pop.style.top=y+"px"; }
+}
+async function setAssignees(key, ids){
+  const tg=assignTarget(key); if(!tg.t) return;
+  if(tg.imp){ tg.t.assignees=ids; render(); return; }
+  const prev=tg.t.assignees||[]; const removed=prev.filter(id=>!ids.includes(id) && (tg.t.results||{})[id]);
+  const body={assignees:ids, updated:Date.now()}; if(removed.length){ body.results={}; removed.forEach(id=>body.results[id]=null); }
+  tg.t.assignees=ids; render();
+  try{ await S.db.doc("tasks/"+tg.tid).update(body); }catch(err){ fail(err); }
+}
+document.addEventListener("click", e=>{
+  const t=e.target; const a=S.assignPop;
+  const ab=t.closest("[data-assign]");
+  if(ab){ const key=ab.dataset.assign; S.pop=null; S.assignPop = (a&&a.key===key)? null : {key, q:""}; renderPop(); renderAssign(); return; }
+  if(!a) return;
+  if(!t.closest(".apop")){ S.assignPop=null; renderAssign(); return; }
+  if(t.id==="assDone"){ S.assignPop=null; renderAssign(); return; }
+  const g=t.closest("[data-agrp]"); if(g){ const tg=assignTarget(a.key); const set=new Set(tg.t.assignees||[]);
+    S.staff.filter(s=>(s.position||"ไม่ระบุตำแหน่ง")===g.dataset.agrp && s.active!==false && (!a.q||s.name.includes(a.q))).forEach(s=> g.dataset.all==="1"? set.add(s.id) : set.delete(s.id));
+    setAssignees(a.key,[...set]); }
+}, true);
+document.addEventListener("change", e=>{ const t=e.target; if(!S.assignPop || t.dataset.acheck==null) return;
+  const tg=assignTarget(S.assignPop.key); const set=new Set(tg.t.assignees||[]); t.checked? set.add(t.dataset.acheck) : set.delete(t.dataset.acheck); setAssignees(S.assignPop.key,[...set]); });
+document.addEventListener("input", e=>{ if(e.target.id==="assQ" && S.assignPop){ S.assignPop.q=e.target.value; $("#assList").innerHTML=assignList(S.assignPop); } });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.assignPop){ S.assignPop=null; renderAssign(); e.stopImmediatePropagation(); } }, true);
+
+function viewStaff(){
+  const list=[...S.staff].sort((a,b)=>(a.order||0)-(b.order||0));
+  const rows=list.map(s=>`<tr>
+    <td class="num">${s.order||""}</td>
+    <td class="nm">${esc(s.name)}</td><td class="pos">${esc(s.position||"")}</td>
+    <td>${s.active===false?'<span class="chip c-low">พ้นสภาพ/ย้าย</span>':'<span class="chip c-ok">ปฏิบัติงาน</span>'}</td>
+    <td class="edit-only" style="white-space:nowrap"><button class="btn sm ghost" data-editstaff="${esc(s.id)}" type="button">แก้ไข</button></td></tr>`).join("");
+  return `<div class="grid2">
+   <div>
+    <div class="bar"><h2 class="grow">รายชื่อบุคลากร (${S.staff.length} คน)</h2><button class="btn pri edit-only" type="button" id="newStaff">+ เพิ่มบุคลากร</button></div>
+    <div class="tablebox"><table class="std"><thead><tr><th class="num">ที่</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>สถานะ</th><th class="edit-only"></th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="5" class="empty">ยังไม่มีรายชื่อ กด “+ เพิ่มบุคลากร” หรือวางรายชื่อหลายคนในกล่องด้านขวา</td></tr>'}</tbody></table></div>
+   </div>
+   <div style="display:grid;gap:20px">
+    <div class="card"><h3>ผู้ดูแลระบบและผู้ใช้</h3>
+      <p class="mini" style="margin:0 0 8px">ทุกคนที่มีลิงก์เว็บไซต์ดูได้ ผู้ดูแลต้องเข้าสู่ระบบด้วยรหัส</p>
+      <div class="tablebox"><table class="std"><tbody>
+        <tr><td><span class="chip c-high">ผู้ดูแลระบบ</span></td><td>กด <b>“เข้าสู่ระบบผู้ดูแล”</b> แล้วใส่รหัส (ADMIN_PASSWORD) เช่น ผู้บริหาร ฝ่ายบุคคล · เพิ่ม/แก้ไขงาน นำเข้าไฟล์ มอบหมายงาน ให้คะแนน</td></tr>
+        <tr><td><span class="chip c-low">ผู้ใช้ทั่วไป</span></td><td>เปิดลิงก์เว็บไซต์ได้เลย เช่น ครูทุกคน · ดูตารางคะแนนและรายงาน แก้ไขไม่ได้ (ถ้าต้องการจำกัดคนดู ตั้ง VIEW_PASSWORD ใน Apps Script)</td></tr>
+      </tbody></table></div>
+      <p class="mini" style="margin:8px 0 0">กด “ดูแบบผู้ใช้ทั่วไป” ที่แถบด้านบน เพื่อดูว่าครูจะเห็นหน้าจออย่างไร</p></div>
+    <div class="card"><h3>เกณฑ์การให้คะแนน</h3>
+      <form id="scoreForm">${STATUS.map(x=>`<label class="scorerow"><span><span class="st st-${x.k}">${x.label}</span></span>
+      <input type="number" step="0.25" id="sc-${x.k}" value="${esc(S.scoring[x.k])}" ${S.canEdit?"":"disabled"}></label>`).join("")}
+      <button class="btn pri edit-only" type="submit">บันทึกเกณฑ์</button>
+      <p class="mini" style="margin:8px 0 0">การเปลี่ยนเกณฑ์จะคำนวณคะแนนของทุกปีงบประมาณใหม่ทันที</p></form></div>
+    <div class="card edit-only"><h3>กลุ่มงานที่ระบุเพิ่ม</h3>
+      ${S.customGroups.length? S.customGroups.map(g=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)"><span>${esc(g)}</span><button class="btn sm ghost danger" data-delgroup="${esc(g)}" type="button">${S.armed==="g:"+g?"กดอีกครั้งเพื่อลบ":"ลบ"}</button></div>`).join("")
+        : '<p class="mini" style="margin:0">ยังไม่มี กด “+ อื่นๆ (ระบุ)” ที่แถบกลุ่มงานด้านบนเพื่อเพิ่ม</p>'}</div>
+    <div class="card edit-only"><h3>เพิ่มหลายคนพร้อมกัน</h3>
+      <p class="mini" style="margin:0 0 8px">วางบรรทัดละ 1 คน รูปแบบ <b>ชื่อ-สกุล, ตำแหน่ง</b></p>
+      <form id="bulkForm"><textarea id="bulk" rows="5" placeholder="นางสาวตัวอย่าง ใจดี, ครู ศูนย์การเรียนรู้"></textarea>
+      <button class="btn" type="submit" style="margin-top:8px">เพิ่มรายชื่อ</button></form></div>
+   </div></div>`;
+}
+
+/* ---------- import ---------- */
+function viewImport(){
+  const I=S.imp; const caps=S.sampleCaps; const ai=!!S.sample; const img=!!(caps&&caps.images);
+  const gsel = `<select id="impGroup" aria-label="กลุ่มงานของเอกสาร"><option value="">ให้ระบบดูจากเอกสาร</option>${allGroups().map(g=>`<option ${g===I.group?"selected":""}>${esc(g)}</option>`).join("")}</select>`;
+  const files = I.files.map((f,i)=>`<span class="fchip"><span><b style="font-weight:600;color:var(--muted)">${/^image\//.test(f.type)?"รูป":"ไฟล์"}</b> ${esc(f.name)}</span><button type="button" data-rmfile="${i}" aria-label="เอาไฟล์ออก">✕</button></span>`).join("");
+  let out = `<div class="steps">
+  <section class="card step"><h3><span class="no">1</span>เลือกเอกสารตัวชี้วัด / งาน</h3>
+    <label class="drop" id="drop" for="impFile"><b>คลิกเพื่อเลือกไฟล์</b> หรือลากไฟล์มาวางที่นี่<br>
+      <span class="mini">Word (.docx), PDF ที่เป็นข้อความ หรือไฟล์ข้อความ · เลือกได้หลายไฟล์</span></label>
+    <input type="file" id="impFile" multiple hidden accept="${img?caps.images.mediaTypes.join(",")+",":""}.docx,.pdf,.txt,.csv">
+    ${files?`<div class="files">${files}</div>`:""}
+    <details style="margin-top:12px" ${I.text?"open":""}><summary class="mini" style="cursor:pointer">หรือพิมพ์/วางข้อความ</summary>
+      <textarea id="impText" rows="6" style="margin-top:8px" placeholder="ตัวอย่าง&#10;การเงิน&#10;1.1 รายงานการเบิกจ่ายงบประมาณ&#10;- สรุปการเบิกจ่ายไตรมาส 1 ส่ง 31/12/2569&#10;- สรุปการเบิกจ่ายไตรมาส 2 ส่ง 31/03/2570">${esc(I.text)}</textarea></details>
+    <div class="form" style="margin-top:12px"><label class="mini" for="impGroup">กลุ่มงานของเอกสารนี้</label>${gsel}</div>
+    <div class="form" style="margin-top:12px">
+      ${ai?`<button type="button" class="btn pri" id="impAI" ${I.busy?"disabled":""}>อ่านเอกสารและแยกหัวข้อ</button>`:""}
+      <button type="button" class="btn pri" id="impLocal" ${I.busy?"disabled":""}>อ่านไฟล์/ข้อความและแยกหัวข้อ</button>
+      ${I.busy?`<button type="button" class="btn sm" id="impStop">หยุด</button>`:""}
+    </div>
+    ${ai?`<p class="mini" style="margin:8px 0 0">การอ่านไฟล์ใช้ Claude ผ่านบัญชีของผู้กด ครั้งแรกจะมีหน้าต่างขออนุญาต${img?"":" · รูปภาพยังส่งให้อ่านไม่ได้ในมุมมองนี้"}</p>`:`<p class="mini" style="margin:8px 0 0">ระบบอ่านข้อความจากไฟล์ แล้วแยกตามบรรทัด: ชื่อกลุ่มงาน · ตัวชี้วัดขึ้นต้นด้วยเลข เช่น “1.1 …” · งานขึ้นต้นด้วย “-” ไฟล์ที่เป็นภาพสแกนอ่านไม่ได้ ให้พิมพ์ข้อความแทน</p>`}
+    ${I.status?`<div class="status ${I.err?"err":""} ${I.busy?"busy":""}">${esc(I.status)}</div>`:""}
+  </section>`;
+  if(I.items){
+    const nInd=I.items.filter(x=>x.include).length, nTask=I.items.filter(x=>x.include).reduce((a,x)=>a+x.tasks.filter(t=>t.name.trim()).length,0);
+    const gs=allGroups();
+    const sd=I.src||{}; const hasFiles=I.files.length;
+    out += `<section class="card step"><h3><span class="no">2</span>ต้นเรื่องของเอกสาร</h3>
+      <p class="mini" style="margin:0 0 12px">ข้อมูลนี้จะถูกบันทึกไว้ที่ทุกตัวชี้วัดที่นำเข้า ดูย้อนหลังได้จากปุ่ม “เอกสาร/ต้นเรื่อง”</p>
+      <div class="grid2" style="gap:12px">
+        <label class="field"><span>ต้นเรื่องจาก</span><input type="text" data-src="source" list="srcList" value="${esc(sd.source||"")}" placeholder="เลือกหรือพิมพ์"><datalist id="srcList">${SOURCES.map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label>
+        <label class="field"><span>เลขที่หนังสือ</span><input type="text" data-src="refNo" value="${esc(sd.refNo||"")}"></label>
+        <label class="field"><span>ลงวันที่</span><input type="date" data-src="date" value="${esc(sd.date||"")}"></label>
+        <label class="field"><span>เรื่อง</span><input type="text" data-src="subject" value="${esc(sd.subject||"")}"></label></div>
+      ${hasFiles?`<label class="pitem" style="padding:0"><input type="checkbox" id="impAttach" ${I.attach?"checked":""}> แนบไฟล์ต้นฉบับ (${I.files.length} ไฟล์) ไว้กับตัวชี้วัดด้วย <span class="mini">· เก็บใน Google Drive</span></label>`:""}
+    </section>
+    <section class="card step"><h3><span class="no">3</span>ตรวจและแก้ไขก่อนนำเข้า</h3>
+      <p class="mini" style="margin:0 0 12px">แก้ข้อความได้ทุกช่อง เอาเครื่องหมายถูกออกจากตัวชี้วัดที่ไม่ต้องการ · กด “+ ผู้รับผิดชอบ” ท้ายงานเพื่อเลือกคน (เลือกตอนนี้หรือภายหลังก็ได้)</p>
+      ${I.items.map((it,i)=>`<div class="irow ${it.include?"":"off"}">
+        <div class="ihead2"><input type="checkbox" data-iinc="${i}" ${it.include?"checked":""} aria-label="นำเข้าตัวชี้วัดนี้">
+          <select class="ig" data-igroup="${i}" aria-label="กลุ่มงาน">${[...new Set([...gs,it.group])].map(g=>`<option ${g===it.group?"selected":""}>${esc(g)}</option>`).join("")}</select>
+          <input class="ic" type="text" data-icode="${i}" value="${esc(it.code)}" placeholder="รหัส" aria-label="รหัสตัวชี้วัด">
+          <input class="in" type="text" data-iname="${i}" value="${esc(it.name)}" placeholder="ชื่อตัวชี้วัดย่อย" aria-label="ชื่อตัวชี้วัด">
+          <button type="button" class="btn sm ghost danger" data-idel="${i}">ลบ</button></div>
+        ${it.tasks.map((t,j)=>`<div class="trow"><span class="bul">•</span><input type="text" data-tname="${i}.${j}" value="${esc(t.name)}" placeholder="ชื่องาน" aria-label="ชื่องาน">
+          <input type="date" data-tdue="${i}.${j}" value="${esc(t.due)}" aria-label="กำหนดส่ง">
+          <button type="button" class="btn sm ${(t.assignees||[]).length?"":"ghost"}" data-assign="imp:${i}.${j}" title="${esc((t.assignees||[]).map(id=>staffById(id)?.name).join(", "))}">${(t.assignees||[]).length? (t.assignees.length+" คน: "+esc(t.assignees.slice(0,2).map(id=>shortName(staffById(id)?.name).split(" ")[0]).join(", "))+(t.assignees.length>2?"…":"")) : "+ ผู้รับผิดชอบ"}</button><button type="button" class="btn sm ghost danger" data-tdel="${i}.${j}" aria-label="ลบงาน">✕</button></div>`).join("")}
+        <div style="padding:4px 12px 10px"><button type="button" class="btn sm ghost" data-tadd="${i}">+ เพิ่มงาน</button></div></div>`).join("")}
+      <button type="button" class="btn sm" id="iAdd">+ เพิ่มตัวชี้วัด</button>
+    </section>
+    <section class="card step"><h3><span class="no">4</span>นำเข้าปีงบประมาณ ${esc(S.fy)}</h3>
+      <p class="mini" style="margin:0 0 12px">ตัวชี้วัดที่รหัสและกลุ่มงานซ้ำกับของเดิม จะเพิ่มงานเข้าไปในตัวชี้วัดเดิม · งานที่ยังไม่เลือกผู้รับผิดชอบ เลือกภายหลังได้ที่แท็บ “งานและผู้รับผิดชอบ”</p>
+      <div class="form"><button type="button" class="btn pri" id="impGo" ${nInd&&!I.busy?"":"disabled"}>นำเข้า ${nInd} ตัวชี้วัด ${nTask} งาน</button>
+      <button type="button" class="btn" id="impReset">ล้างและเริ่มใหม่</button></div></section>`;
+  }
+  return out + `</div>`;
+}
+let impAbort=null;
+function setImp(patch){ Object.assign(S.imp,patch); if(S.tab==="import") render(); }
+function loadScript(src){ return new Promise((ok,no)=>{ if(document.querySelector(`script[src="${src}"]`)) return ok(); const el=document.createElement("script"); el.src=src; el.onload=ok; el.onerror=()=>no(new Error("load")); document.head.appendChild(el); }); }
+async function docxText(f){ await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"); const r=await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()}); return r.value||""; }
+async function pdfDoc(f){ await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+  pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  return pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise; }
+async function pdfText(doc){ let out=""; for(let i=1;i<=Math.min(doc.numPages,40);i++){ const pg=await doc.getPage(i); const c=await pg.getTextContent(); out+=c.items.map(x=>x.str).join(" ")+"\n"; } return out; }
+async function pdfImages(doc,max){ const out=[]; for(let i=1;i<=Math.min(doc.numPages,max);i++){ const pg=await doc.getPage(i); const vp=pg.getViewport({scale:1.6}); const cv=document.createElement("canvas"); cv.width=vp.width; cv.height=vp.height;
+  await pg.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise; out.push(await new Promise(r=>cv.toBlob(r,"image/jpeg",.85))); } return out; }
+async function gatherSources(){
+  const I=S.imp; let text=I.text.trim()? "ข้อความที่พิมพ์:\n"+I.text.trim()+"\n\n" : ""; const images=[]; const maxImg=S.sampleCaps?.images?.maxCount||0;
+  for(const f of I.files){
+    const n=f.name.toLowerCase();
+    if(/^image\//.test(f.type)){ if(!maxImg) throw {code:"local", message:"มุมมองนี้ส่งรูปภาพให้อ่านไม่ได้ ลองใช้ไฟล์ Word/PDF หรือพิมพ์ข้อความแทน"}; images.push(f); }
+    else if(n.endsWith(".docx")){ text+=`ไฟล์ ${f.name}:\n`+await docxText(f)+"\n\n"; }
+    else if(n.endsWith(".pdf")){ let doc; try{ doc=await pdfDoc(f); }catch(_){ throw {code:"local", message:"เปิด PDF ไม่ได้ ลองถ่ายภาพหน้าเอกสารแล้วอัปโหลดเป็นรูปแทน"}; }
+      const t=await pdfText(doc); if(t.replace(/\s/g,"").length>80) text+=`ไฟล์ ${f.name}:\n`+t+"\n\n";
+      else if(maxImg) images.push(...await pdfImages(doc, Math.max(1,maxImg-images.length)));
+      else throw {code:"local", message:`${f.name} เป็นภาพสแกน อ่านข้อความไม่ได้ในมุมมองนี้`}; }
+    else if(/\.(txt|csv)$/.test(n) || /^text\//.test(f.type)){ text+=`ไฟล์ ${f.name}:\n`+await f.text()+"\n\n"; }
+    else throw {code:"local", message:`ยังไม่รองรับไฟล์ ${f.name} (ใช้รูปภาพ, .docx, .pdf หรือ .txt)`};
+  }
+  if(images.length>maxImg && maxImg) images.length=maxImg;
+  if(text.length>120000) text=text.slice(0,120000);
+  return {text, images};
+}
+function normDue(v){ v=String(v||"").trim(); let m=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); if(m){ let y=+m[1]; if(y>2400) y-=543; return `${y}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`; }
+  m=v.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/); if(m){ let y=+m[3]; if(y<100) y+=2500; if(y>2400) y-=543; return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`; } return ""; }
+function cleanItems(raw, defGroup){
+  const arr = Array.isArray(raw)? raw : Array.isArray(raw?.indicators)? raw.indicators : [];
+  return arr.slice(0,200).map((x,i)=>({include:true, group:String(x?.group||defGroup||GROUPS_FIXED[0]).trim().slice(0,80), code:String(x?.code||String(i+1)).trim().slice(0,20),
+    name:String(x?.name||"").trim().slice(0,300), tasks:(Array.isArray(x?.tasks)?x.tasks:[]).slice(0,100).map(t=>({name:String(typeof t==="string"?t:t?.name||"").trim().slice(0,300), due:normDue(t?.due)})).filter(t=>t.name)}))
+    .filter(x=>x.name||x.tasks.length);
+}
+async function runAI(){
+  const I=S.imp; if(!I.files.length && !I.text.trim()){ setImp({status:"เลือกไฟล์หรือพิมพ์ข้อความก่อน", err:true}); return; }
+  setImp({busy:true, err:false, status:"กำลังเตรียมเอกสาร…"});
+  try{
+    const {text, images} = await gatherSources();
+    if(!text.trim() && !images.length){ setImp({busy:false, err:true, status:"ไม่พบข้อความในไฟล์"}); return; }
+    setImp({status:`กำลังอ่านเอกสาร${images.length?" ("+images.length+" ภาพ)":""} และแยกหัวข้อ… อาจใช้เวลา 20–60 วินาที`});
+    const prompt = `คุณช่วยงานธุรการของศูนย์ส่งเสริมการเรียนรู้ระดับอำเภอ (สกร.) ในประเทศไทย
+งาน: อ่านเอกสาร${images.length?"ในรูปภาพที่แนบ":""}${text?"และข้อความด้านล่าง":""} แล้วแยก "ตัวชี้วัดย่อย" และ "งาน/ชิ้นงานที่ต้องส่ง" ภายใต้แต่ละตัวชี้วัด
+กลุ่มงานที่มีในระบบ: ${allGroups().join(" | ")}
+${I.group?`เอกสารนี้เป็นของกลุ่มงาน "${I.group}" ให้ใช้กลุ่มนี้กับทุกตัวชี้วัด`:`ให้จัดแต่ละตัวชี้วัดเข้ากลุ่มงานที่ตรงที่สุดจากรายการ ถ้าไม่ตรงเลยให้ใช้ชื่อกลุ่มตามที่เอกสารระบุ`}
+กติกา:
+- code = รหัส/เลขข้อของตัวชี้วัดตามเอกสาร (เช่น "1.1") ถ้าไม่มีให้เรียงเลขเอง
+- name = ชื่อตัวชี้วัดย่อย คัดลอกตามเอกสาร กระชับ
+- tasks = งานหรือเอกสารหลักฐานที่ต้องจัดทำ/ส่ง ถ้าเอกสารไม่แยกงานไว้ ให้ใส่งานเดียวชื่อเดียวกับตัวชี้วัด
+- due = วันกำหนดส่งรูปแบบ YYYY-MM-DD เป็นปี ค.ศ. (แปลง พ.ศ. ลบ 543) ถ้าไม่ระบุให้ใส่ ""
+- ไม่ต้องใส่ชื่อผู้รับผิดชอบ
+- source = ข้อมูลต้นเรื่องของหนังสือ/เอกสาร ถ้าพบ: from (หน่วยงานที่ส่งหรือสั่งการ เลือกจาก ${SOURCES.join(" | ")} หรือระบุเอง), refNo (เลขที่หนังสือ), date (ลงวันที่ YYYY-MM-DD ค.ศ.), subject (เรื่อง) ถ้าไม่พบให้ใส่ ""
+ตอบเป็น JSON อย่างเดียว รูปแบบ {"source":{"from":"","refNo":"","date":"","subject":""},"indicators":[{"group":"...","code":"...","name":"...","tasks":[{"name":"...","due":""}]}]}
+${text?"\n----- เอกสาร -----\n"+text:""}`;
+    impAbort=new AbortController();
+    const res = await S.sample.json(prompt, {images: images.length?images:undefined, modelTier:"default", signal:impAbort.signal});
+    const items=cleanItems(res, I.group);
+    const src=res&&typeof res.source==="object"? res.source : null;
+    if(src){ const cur=I.src||{}; I.src={source:cur.source||String(src.from||"").slice(0,120), refNo:cur.refNo||String(src.refNo||"").slice(0,80), date:cur.date||normDue(src.date), subject:cur.subject||String(src.subject||"").slice(0,300)}; }
+    setImp({busy:false, items: (I.items||[]).concat(items), err:!items.length, status: items.length? `พบ ${items.length} ตัวชี้วัด ${items.reduce((a,x)=>a+x.tasks.length,0)} งาน ตรวจทานในขั้นที่ 2` : "อ่านแล้วแต่ไม่พบตัวชี้วัด ลองเลือกกลุ่มงาน หรือใช้ภาพที่ชัดขึ้น"});
+  }catch(err){ console.error(err);
+    const c=err&&err.code; const msg = c==="local"? err.message : c==="not_granted"? "ไม่ได้อนุญาตให้ใช้ Claude อ่านไฟล์ ใช้วิธีพิมพ์ข้อความแทนได้" : c==="cancelled"? "หยุดแล้ว" : c==="rate_limited"? "ใช้งานถี่เกินไป รอสักครู่แล้วลองใหม่" : c==="image_rejected"? "รูปภาพใหญ่หรือมากเกินไป ลองลดจำนวนภาพ" : "อ่านเอกสารไม่สำเร็จ ลองอีกครั้ง หรือพิมพ์ข้อความแทน";
+    setImp({busy:false, err:c!=="cancelled", status:msg}); }
+}
+function parseLocal(text, defGroup){
+  const items=[]; let group=defGroup||GROUPS_FIXED[0]; let cur=null; const gs=allGroups();
+  text.split(/\n/).forEach(raw=>{ const l=raw.trim(); if(!l) return;
+    const g=gs.find(g=>l.replace(/^กลุ่มงาน\s*/,"").replace(/[:：]$/,"")===g.replace(/^กลุ่มงาน/,"") || l.replace(/[:：]$/,"")===g); if(g){ group=g; cur=null; return; }
+    let m=l.match(/^(?:ตัวชี้วัด(?:ย่อย)?(?:ที่)?\s*)?(\d+(?:\.\d+)+)\s*[:.)\-]?\s*(.+)$/);
+    if(m){ cur={include:true, group, code:m[1], name:m[2].trim(), tasks:[]}; items.push(cur); return; }
+    m=l.match(/^(?:[-•*–·]|\(?\d+\))\s*(.+)$/); const name=(m?m[1]:l).trim();
+    if(!cur){ cur={include:true, group, code:String(items.length+1), name: m? "(ตั้งชื่อตัวชี้วัด)" : name, tasks:[]}; items.push(cur); if(!m) return; }
+    const due=normDue(name); cur.tasks.push({name:name.replace(/\s*(ส่ง|กำหนดส่ง|ภายใน(วันที่)?)\s*\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}\s*$/,"").trim(), due});
+  });
+  items.forEach(x=>{ if(!x.tasks.length) x.tasks.push({name:x.name, due:""}); });
+  return items;
+}
+async function doImport(){
+  const items=S.imp.items.filter(x=>x.include && x.name.trim()); if(!items.length) return;
+  setImp({busy:true, err:false, status:"กำลังนำเข้า…"});
+  try{
+    const newGroups=[...new Set(items.map(x=>x.group.trim()).filter(g=>g && !allGroups().includes(g)))];
+    if(newGroups.length) await S.db.doc("settings/groups").set({custom:[...S.customGroups,...newGroups]});
+    let nT=0, nUn=0, base=Date.now(); let skippedFiles=[];
+    const sd=S.imp.src||{}; let docEntry=null;
+    const anySrc = sd.source||sd.refNo||sd.date||sd.subject;
+    if(anySrc || (S.imp.attach && S.imp.files.length)){
+      let filesRec=[]; if(S.imp.attach && S.imp.files.length){ setImp({status:"กำลังแนบไฟล์ต้นฉบับ…"}); const u=await uploadFiles(S.imp.files); filesRec=u.out; skippedFiles=u.skipped; setImp({status:"กำลังนำเข้า…"}); }
+      docEntry={id:rid(), source:sd.source||"", refNo:sd.refNo||"", date:sd.date||"", subject:sd.subject||"", note:"", link:"", files:filesRec, addedAt:Date.now()};
+    }
+    for(const it of items){
+      const g=it.group.trim()||GROUPS_FIXED[0];
+      let ind=S.indicators.find(i=>groupOfInd(i)===g && String(i.code).trim()===it.code.trim());
+      let id;
+      if(ind){ id=ind.id; if(docEntry) await S.db.doc("indicators/"+id).update({docs:(ind.docs||[]).concat({...docEntry, id:rid()})}); }
+      else id=(await S.db.collection("indicators").add({fy:S.fy, group:g, code:it.code.trim(), name:it.name.trim(), created:base++, docs: docEntry?[{...docEntry, id:rid()}]:[]})).id;
+      for(const t of it.tasks.filter(t=>t.name.trim())){ const as=(t.assignees||[]).filter(x=>staffById(x)); if(!as.length) nUn++;
+        await S.db.collection("tasks").add({fy:S.fy, indicatorId:id, name:t.name.trim(), due:t.due||"", note:"", assignees:as, results:{}, created:base++, updated:base}); nT++; }
+    }
+    S.imp={files:[], text:"", group:"", items:null, status:"", err:false, busy:false, src:{}, attach:true};
+    if(skippedFiles.length) setTimeout(()=>toast("แนบไม่ได้: "+skippedFiles.join(", ")),2600);
+    S.tab="manage"; S.taskFilter = nUn? "unassigned" : ""; render(); toast(`นำเข้า ${items.length} ตัวชี้วัด ${nT} งานแล้ว`+(nUn?` · ยังไม่ระบุผู้รับผิดชอบ ${nUn} งาน`:""));
+  }catch(err){ fail(err); setImp({busy:false, err:true, status:"นำเข้าไม่ครบ ตรวจสอบรายการในแท็บจัดการงาน แล้วลองอีกครั้ง"}); }
+}
+function impAddFiles(list){ const f=[...list].filter(x=>x.size<25e6); if(f.length<list.length) toast("ข้ามไฟล์ที่ใหญ่เกิน 25 MB"); setImp({files:S.imp.files.concat(f), status:"", err:false}); }
+document.addEventListener("dragover", e=>{ const d=e.target.closest?.("#drop"); if(d){ e.preventDefault(); d.classList.add("over"); } });
+document.addEventListener("dragleave", e=>{ const d=e.target.closest?.("#drop"); if(d) d.classList.remove("over"); });
+document.addEventListener("drop", e=>{ const d=e.target.closest?.("#drop"); if(d){ e.preventDefault(); impAddFiles(e.dataTransfer.files); } });
+document.addEventListener("click", async e=>{
+  if(S.tab!=="import") return; const t=e.target; const I=S.imp; const at=(a)=>t.closest(`[${a}]`)?.getAttribute(a);
+  if(at("data-rmfile")!=null){ I.files.splice(+at("data-rmfile"),1); render(); return; }
+  if(t.id==="impAI"){ I.text=$("#impText")?.value||I.text; runAI(); return; }
+  if(t.id==="impStop"){ impAbort?.abort(); return; }
+  if(t.id==="impLocal"){ I.text=$("#impText")?.value||I.text;
+    if(I.files.length){ setImp({busy:true, err:false, status:"กำลังอ่านไฟล์…"});
+      try{ let txt=""; for(const f of I.files){ const n=f.name.toLowerCase();
+          if(n.endsWith(".docx")) txt+=await docxText(f)+"\n";
+          else if(n.endsWith(".pdf")){ const t2=await pdfText(await pdfDoc(f)); if(t2.replace(/\s/g,"").length<40) throw {code:"local", message:f.name+" เป็นภาพสแกน อ่านข้อความไม่ได้ ให้พิมพ์ข้อความแทน"}; txt+=t2+"\n"; }
+          else if(/\.(txt|csv)$/.test(n)) txt+=await f.text()+"\n";
+          else throw {code:"local", message:"อ่าน "+f.name+" อัตโนมัติไม่ได้ (รองรับ .docx .pdf .txt) ให้พิมพ์ข้อความแทน"}; }
+        I.text=(I.text.trim()? I.text.trim()+"\n":"")+txt.replace(/\n{3,}/g,"\n\n").trim(); I.files=[]; I.busy=false;
+      }catch(err){ setImp({busy:false, err:true, status: err&&err.code==="local"? err.message : "อ่านไฟล์ไม่สำเร็จ ให้คัดลอกข้อความมาวางแทน"}); return; } }
+    if(!I.text.trim()){ setImp({status:"พิมพ์หรือวางข้อความในช่อง “หรือพิมพ์/วางข้อความ” ก่อน", err:true}); return; }
+    const items=parseLocal(I.text, I.group); setImp({items:(I.items||[]).concat(items), status:`แยกได้ ${items.length} ตัวชี้วัด ตรวจทานในขั้นที่ 2`, err:!items.length}); return; }
+  if(at("data-idel")!=null){ I.items.splice(+at("data-idel"),1); if(!I.items.length) I.items=null; render(); return; }
+  if(at("data-tadd")!=null){ I.items[+at("data-tadd")].tasks.push({name:"",due:"",assignees:[]}); render(); return; }
+  if(at("data-tdel")!=null){ const [i,j]=at("data-tdel").split(".").map(Number); I.items[i].tasks.splice(j,1); render(); return; }
+  if(t.id==="iAdd"){ I.items.push({include:true, group:I.group||S.group&&S.group!==UNGROUPED&&S.group||GROUPS_FIXED[0], code:String(I.items.length+1), name:"", tasks:[{name:"",due:""}]}); render(); return; }
+  if(t.id==="impGo"){ doImport(); return; }
+  if(t.id==="impReset"){ S.imp={files:[], text:"", group:"", items:null, status:"", err:false, busy:false, src:{}, attach:true}; render(); return; }
+});
+document.addEventListener("input", e=>{
+  if(S.tab!=="import") return; const t=e.target, I=S.imp, d=t.dataset;
+  if(t.id==="impText") I.text=t.value;
+  else if(d.src!=null){ I.src=I.src||{}; I.src[d.src]=t.value; }
+  else if(d.icode!=null) I.items[+d.icode].code=t.value;
+  else if(d.iname!=null) I.items[+d.iname].name=t.value;
+  else if(d.tname!=null){ const [i,j]=d.tname.split(".").map(Number); I.items[i].tasks[j].name=t.value; }
+});
+document.addEventListener("change", e=>{
+  if(S.tab!=="import") return; const t=e.target, I=S.imp, d=t.dataset;
+  if(t.id==="impFile"){ impAddFiles(t.files); return; }
+  if(t.id==="impGroup"){ I.group=t.value; return; }
+  if(t.id==="impAttach"){ I.attach=t.checked; return; }
+  if(d.src!=null){ I.src=I.src||{}; I.src[d.src]=t.value; return; }
+  if(d.igroup!=null){ I.items[+d.igroup].group=t.value; return; }
+  if(d.iinc!=null){ I.items[+d.iinc].include=t.checked; render(); return; }
+  if(d.tdue!=null){ const [i,j]=d.tdue.split(".").map(Number); I.items[i].tasks[j].due=t.value; }
+});
+
+/* ---------- panels ---------- */
+function openPanel(p){ S.pop=null; S.panel=p; S.armed=null; renderPanel(); renderPop(); }
+function closePanel(){ S.panel=null; S.armed=null; $("#layer").innerHTML=""; }
+function renderPanel(){
+  const L=$("#layer"); const p=S.panel; if(!p){ L.innerHTML=""; return; }
+  let title="", body="";
+  if(p.type==="task"){ title = p.isNew? "เพิ่มงาน" : (S.canEdit? "แก้ไขงานและบันทึกการส่ง":"รายละเอียดงาน"); body = panelTask(p); }
+  else if(p.type==="person"){ const s=staffById(p.id); title=s?s.name:"บุคลากร"; body=panelPerson(p.id); }
+  else if(p.type==="staff"){ title = p.isNew?"เพิ่มบุคลากร":"แก้ไขบุคลากร"; body=panelStaff(p); }
+  else if(p.type==="ind"){ title="แก้ไขตัวชี้วัด"; body=panelInd(p); }
+  else if(p.type==="docs"){ title="เอกสารและต้นเรื่องของตัวชี้วัด"; body=panelDocs(p); }
+  else if(p.type==="login"){ title="เข้าสู่ระบบผู้ดูแล"; body=`<form id="loginForm" style="max-width:380px"><label class="field"><span>รหัสผู้ดูแลระบบ</span><input type="password" id="adminPass" required autocomplete="current-password"></label>
+    ${p.err?`<p class="hint" style="font-size:14px">${esc(p.err)}</p>`:""}<button class="btn pri" type="submit" ${p.busy?"disabled":""}>${p.busy?"กำลังตรวจสอบ…":"เข้าสู่ระบบ"}</button>
+    <p class="mini">รหัสอยู่ใน Apps Script → การตั้งค่าโปรเจ็กต์ → คุณสมบัติของสคริปต์ (ADMIN_PASSWORD) · เครื่องนี้จะจำการเข้าสู่ระบบไว้จนกว่าจะกด “ออกจากระบบ”</p></form>`; }
+  const keepScroll = L.querySelector(".panel")?.scrollTop;
+  L.innerHTML = `<div class="ov" data-close="1"><div class="panel" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <div class="panel-h"><h2>${esc(title)}</h2><button class="btn sm" data-closebtn="1" type="button">ปิด</button></div>
+    <div class="panel-b">${body}</div></div></div>`;
+  if(keepScroll) L.querySelector(".panel").scrollTop = keepScroll;
+}
+function panelTask(p){
+  const d=p.draft; const ro = !S.canEdit;
+  const inds=sortedIndicators();
+  const groups={}; activeStaff().concat(S.staff.filter(s=>s.active===false && d.assignees.includes(s.id)))
+    .sort((a,b)=>(a.order||0)-(b.order||0)).forEach(s=>{ const g=s.position||"ไม่ระบุตำแหน่ง"; (groups[g]=groups[g]||[]).push(s); });
+  const f = (p.filter||"").trim();
+  const picker = Object.entries(groups).map(([g,list])=>{
+    const shown=list.filter(s=>!f||s.name.includes(f)); if(!shown.length) return "";
+    const all = shown.every(s=>d.assignees.includes(s.id));
+    return `<div class="pgrp"><span>${esc(g)} (${shown.length})</span>${ro?"":`<button type="button" class="btn sm ghost" data-grp="${esc(g)}" data-all="${all?0:1}">${all?"ยกเลิกทั้งกลุ่ม":"เลือกทั้งกลุ่ม"}</button>`}</div>`+
+      shown.map(s=>`<label class="pitem"><input type="checkbox" data-pick="${esc(s.id)}" ${d.assignees.includes(s.id)?"checked":""} ${ro?"disabled":""}> ${esc(s.name)}</label>`).join("");
+  }).join("");
+  const res = d.assignees.map(id=>{ const s=staffById(id); const r=d.results[id]||{};
+    const lateDays = (r.date && d.due && r.date>d.due) ? Math.round((new Date(r.date)-new Date(d.due))/864e5) : 0;
+    return `<div class="rrow"><div class="rtop"><span class="nm">${esc(s?.name||"(ไม่พบรายชื่อ)")}</span>
+      <div class="seg">${STATUS.map(x=>`<button type="button" class="${x.k}" aria-pressed="${r.status===x.k}" data-res="${esc(id)}" data-st="${x.k}" ${ro?"disabled":""}>${x.label} (${fmtScore(S.scoring[x.k])})</button>`).join("")}</div></div>
+      <div class="rmeta"><label>วันที่ส่ง <input type="date" data-rdate="${esc(id)}" value="${esc(r.date||"")}" ${ro?"disabled":""}></label>
+      <input type="text" data-rnote="${esc(id)}" value="${esc(r.note||"")}" placeholder="หมายเหตุ" ${ro?"disabled":""}>
+      ${lateDays>0?`<span class="hint">ส่งหลังกำหนด ${lateDays} วัน</span>`:""}</div></div>`; }).join("");
+  return `<form id="taskForm">
+    <label class="field"><span>ชื่องาน</span><input type="text" id="tName" value="${esc(d.name)}" required ${ro?"disabled":""}></label>
+    <div class="grid2" style="gap:12px">
+      <label class="field"><span>ตัวชี้วัดย่อย</span><select id="tInd" ${ro?"disabled":""}>${inds.map(i=>`<option value="${esc(i.id)}" ${i.id===d.indicatorId?"selected":""}>[${esc(groupOfInd(i))}] ${esc(i.code)} ${esc(i.name)}</option>`).join("")}</select></label>
+      <label class="field"><span>กำหนดส่ง</span><input type="date" id="tDue" value="${esc(d.due||"")}" ${ro?"disabled":""}></label>
+    </div>
+    <label class="field"><span>รายละเอียด / คำสั่งที่ (ถ้ามี)</span><textarea id="tNote" rows="2" ${ro?"disabled":""}>${esc(d.note||"")}</textarea></label>
+    <div class="field"><span>ผู้รับผิดชอบ (${d.assignees.length} คน)</span>
+      ${ro?"":`<input type="search" id="pickQ" placeholder="ค้นหาชื่อ" value="${esc(p.filter||"")}" aria-label="ค้นหาชื่อผู้รับผิดชอบ">`}
+      <div class="picker">${picker||'<div class="empty">ไม่พบรายชื่อ</div>'}</div></div>
+    <div class="field"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">การส่งงานและคะแนน
+      ${ro||!d.assignees.length?"":`<button type="button" class="btn sm" id="allOn">ทุกคนส่งครบตรงเวลา</button>`}</span>
+      <div class="res">${res||'<div class="empty">เลือกผู้รับผิดชอบก่อน แล้วบันทึกผลการส่งงานของแต่ละคนที่นี่</div>'}</div></div>
+    ${ro?"":`<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;margin-top:18px">
+      <button class="btn pri" type="submit">บันทึก</button>
+      ${p.isNew?"":`<button type="button" class="btn danger ${S.armed==="task"?"armed":""}" id="delTask">${S.armed==="task"?"กดอีกครั้งเพื่อยืนยันลบงานนี้":"ลบงาน"}</button>`}</div>`}
+  </form>`;
+}
+function panelPerson(id){
+  const tasks=visTasks(); const st=personStats(tasks)[id]; if(!st) return '<div class="empty">ไม่พบข้อมูล</div>';
+  const inds=sortedIndicators();
+  const byInd = inds.filter(i=>st.byInd[i.id]).map(i=>`<tr><td><span class="pos">${esc(groupOfInd(i))}</span><br><span style="color:var(--code);font-weight:600">${esc(i.code)}</span> ${esc(i.name)}</td><td class="num">${st.byInd[i.id]}</td></tr>`).join("");
+  const list = st.list.sort((a,b)=>(a.t.due||"9").localeCompare(b.t.due||"9")).map(({t,r})=>{
+    const x=STATUS.find(s=>s.k===r.status);
+    return `<tr class="click" data-task="${esc(t.id)}"><td><div class="nm">${esc(t.name)}</div><div class="pos">${esc(indById(t.indicatorId)?.code||"")} · กำหนด ${thDate(t.due)}${r.date?" · ส่ง "+thDate(r.date):""}</div></td>
+      <td>${x?`<span class="st st-${x.k}">${x.label}</span>`:'<span class="st st-wait">รอประเมิน</span>'}</td><td class="num">${x?fmtScore(scoreOf(x.k)):"—"}</td></tr>`; }).join("");
+  return `<p class="pos" style="margin:0 0 14px">${esc(st.s.position||"")} · ปีงบประมาณ ${esc(S.fy)}${S.group?" · "+esc(S.group):" · ทุกกลุ่มงาน"}</p>
+   <div class="tiles"><div class="tile"><div class="k">จำนวนงาน</div><div class="v">${st.tasks}</div></div>
+   <div class="tile"><div class="k">ตัวชี้วัด</div><div class="v">${st.nInd}</div></div>
+   <div class="tile"><div class="k">คะแนนรวม</div><div class="v ${st.score<0?"neg":""}">${fmtScore(st.score)}</div></div>
+   <div class="tile"><div class="k">เฉลี่ย/งาน</div><div class="v">${st.avg==null?"—":fmtScore(st.avg)}</div></div></div>
+   <h3 style="margin-bottom:8px">แยกตามกลุ่มงาน</h3>
+   <div class="tablebox" style="margin-bottom:20px"><table class="std"><thead><tr><th>กลุ่มงาน</th><th class="num">ตัวชี้วัด</th><th class="num">งาน</th></tr></thead><tbody>${Object.entries(st.byGroup).map(([g,v])=>`<tr><td>${esc(g)}</td><td class="num score">${v.inds.size}</td><td class="num">${v.tasks}</td></tr>`).join("")||'<tr><td class="empty" colspan="3">—</td></tr>'}</tbody></table></div>
+   <h3 style="margin-bottom:8px">แยกตามตัวชี้วัดย่อย</h3>
+   <div class="tablebox" style="margin-bottom:20px"><table class="std"><tbody>${byInd||'<tr><td class="empty">ยังไม่ได้รับมอบหมายงาน</td></tr>'}</tbody></table></div>
+   <h3 style="margin-bottom:8px">รายการงานที่รับผิดชอบ</h3>
+   <div class="tablebox"><table class="std"><tbody>${list||'<tr><td class="empty">—</td></tr>'}</tbody></table></div>`;
+}
+function panelStaff(p){ const d=p.draft;
+  return `<form id="staffForm">
+   <label class="field"><span>ชื่อ-สกุล</span><input type="text" id="sName" value="${esc(d.name)}" required></label>
+   <label class="field"><span>ตำแหน่ง</span><input type="text" id="sPos" value="${esc(d.position||"")}" list="poslist2">
+   <datalist id="poslist2">${[...new Set(S.staff.map(s=>s.position).filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label>
+   <label class="field"><span>ลำดับที่</span><input type="number" id="sOrder" value="${esc(d.order)}" style="max-width:120px"></label>
+   <label class="pitem" style="padding:0 0 12px"><input type="checkbox" id="sActive" ${d.active!==false?"checked":""}> ยังปฏิบัติงานอยู่ (เอาออกเมื่อย้าย/ลาออก ข้อมูลงานเดิมยังอยู่ในรายงาน)</label>
+   <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between"><button class="btn pri" type="submit">บันทึก</button>
+   ${p.isNew?"":`<button type="button" class="btn danger ${S.armed==="staff"?"armed":""}" id="delStaff">${S.armed==="staff"?"กดอีกครั้งเพื่อยืนยันลบรายชื่อ":"ลบรายชื่อ"}</button>`}</div>
+   ${p.isNew?"":`<p class="mini">ถ้าบุคลากรเคยได้รับมอบหมายงาน แนะนำให้เอาเครื่องหมาย “ยังปฏิบัติงานอยู่” ออกแทนการลบ เพื่อให้รายงานปีเก่ายังครบ</p>`}</form>`; }
+function panelInd(p){ const d=p.draft; const n=S.tasks.filter(t=>t.indicatorId===d.id).length;
+  return `<form id="indEdit">
+   <label class="field"><span>กลุ่มงาน</span>${groupSelect("eGroup", d.group||GROUPS_FIXED[0])}<input type="text" id="eOther" placeholder="ระบุชื่อกลุ่มงาน" hidden style="margin-top:6px"></label>
+   <label class="field"><span>รหัส</span><input type="text" id="eCode" value="${esc(d.code)}" required></label>
+   <label class="field"><span>ชื่อตัวชี้วัดย่อย</span><textarea id="eName" rows="2" required>${esc(d.name)}</textarea></label>
+   <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between"><button class="btn pri" type="submit">บันทึก</button>
+   <button type="button" class="btn danger ${S.armed==="ind"?"armed":""}" id="delInd" ${n?"disabled":""}>${n?`ลบไม่ได้ (มี ${n} งาน)`:S.armed==="ind"?"กดอีกครั้งเพื่อยืนยันลบ":"ลบตัวชี้วัด"}</button></div></form>`; }
+
+/* ---------- events ---------- */
+document.addEventListener("click", async e=>{
+  const t=e.target;
+  const tab=t.closest("[data-tab]"); if(tab){ S.tab=tab.dataset.tab; S.pop=null; S.assignPop=null; render(); scrollTo({top:0}); return; }
+  if(t.id==="roleToggle"){ S.viewAsUser=!S.viewAsUser; S.pop=null; closePanel(); render(); return; }
+  if(t.id==="loginBtn"){ openPanel({type:"login"}); return; }
+  if(t.id==="logout"){ NFE.logout(); S.isAdmin=false; S.assets=null; S.viewAsUser=false; render(); toast("ออกจากระบบแล้ว"); return; }
+  const tf=t.closest("[data-tfilter]"); if(tf){ S.taskFilter=tf.dataset.tfilter; render(); return; }
+  const gc=t.closest("[data-group]"); if(gc){ S.group=gc.dataset.group; S.pop=null; render(); return; }
+  if(t.id==="addGroup"){ S.addingGroup=true; renderGroups(); return; }
+  if(t.id==="cancelGroup"){ S.addingGroup=false; renderGroups(); return; }
+  const dg=t.closest("[data-delgroup]"); if(dg){ const g=dg.dataset.delgroup; if(S.armed!=="g:"+g){ S.armed="g:"+g; render(); return; }
+    try{ await S.db.doc("settings/groups").set({custom:S.customGroups.filter(x=>x!==g)}); S.armed=null; toast("ลบกลุ่มงานแล้ว (ตัวชี้วัดเดิมยังอยู่)"); }catch(err){fail(err)} return; }
+  if(t.closest("[data-closebtn]") || t.matches(".ov")){ closePanel(); return; }
+  // popover
+  if(S.pop && t.closest(".pop")){
+    const ps=t.closest("[data-pick-st]");
+    if(ps){ const k=ps.dataset.pickSt; const tk=S.tasks.find(x=>x.id===S.pop.tid); const cur=((tk.results||{})[S.pop.sid]||{});
+      const patch={status: cur.status===k && (tk.assignees||[]).includes(S.pop.sid) ? null : k};
+      if(patch.status && !cur.date) patch.date = new Date().toISOString().slice(0,10);
+      await writeCell(S.pop.tid,S.pop.sid,patch); return; }
+    if(t.id==="popAssign"){ await writeCell(S.pop.tid,S.pop.sid,null); return; }
+    if(t.id==="popClear"){ await writeCell(S.pop.tid,S.pop.sid,{status:null,date:"",note:""}); return; }
+    if(t.id==="popUnassign"){ const p=S.pop; S.pop=null; await writeCell(p.tid,p.sid,null,{unassign:true}); render(); return; }
+    if(t.id==="popClose"){ S.pop=null; render(); return; }
+  }
+  const cell=t.closest("[data-cell]"); if(cell){ S.assignPop=null; renderAssign(); const [tid,sid]=cell.dataset.cell.split("|"); S.pop = (S.pop&&S.pop.tid===tid&&S.pop.sid===sid)? null : {tid,sid};
+    document.querySelectorAll(".mx td.cell.sel").forEach(c=>c.classList.remove("sel")); if(S.pop) cell.classList.add("sel"); renderPop(); return; }
+  if(S.pop && !t.closest(".pop")){ S.pop=null; document.querySelectorAll(".mx td.cell.sel").forEach(c=>c.classList.remove("sel")); renderPop(); }
+  const so=t.closest("[data-sort]"); if(so){ const k=so.dataset.sort; S.sort = S.sort.k===k? {k,dir:-S.sort.dir} : {k,dir:(k==="name"||k==="order")?1:-1}; render(); return; }
+  const pr=t.closest("[data-person]"); if(pr){ openPanel({type:"person", id:pr.dataset.person}); return; }
+  const tk=t.closest("[data-task]"); if(tk){ const task=S.tasks.find(x=>x.id===tk.dataset.task); if(task) openPanel({type:"task", id:task.id, draft:JSON.parse(JSON.stringify({results:{},assignees:[],...task}))}); return; }
+  const nt=t.closest("[data-newtask]"); if(nt){ openPanel({type:"task", isNew:true, draft:{name:"",indicatorId:nt.dataset.newtask,due:"",note:"",assignees:[],results:{}}}); return; }
+  const ei=t.closest("[data-editind]"); if(ei){ const i=indById(ei.dataset.editind); openPanel({type:"ind", draft:{...i}}); return; }
+  const es=t.closest("[data-editstaff]"); if(es){ const s=staffById(es.dataset.editstaff); openPanel({type:"staff", draft:{...s}}); return; }
+  if(t.id==="newStaff"){ const mx=Math.max(0,...S.staff.map(s=>s.order||0)); openPanel({type:"staff", isNew:true, draft:{name:"",position:"",order:mx+1,active:true}}); return; }
+  if(t.id==="addFy"){ const next=String(Math.max(Number(currentFY()),...S.years.map(y=>Number(y.id)))+1); const ex=S.years.some(y=>y.id===S.fy);
+    try{ if(!ex) await S.db.doc("years/"+S.fy).set({label:S.fy}); await S.db.doc("years/"+next).set({label:next}); setFy(next); toast("เพิ่มปีงบประมาณ "+next+" แล้ว"); }catch(err){fail(err)} return; }
+  if(t.id==="copyInd"){ const prev=String(Number(S.fy)-1); try{ const snap=await S.db.collection("indicators").where("fy","==",prev).get();
+      if(snap.empty){ toast("ปีงบประมาณ "+prev+" ไม่มีตัวชี้วัด"); return; }
+      for(const d of snap.docs){ const x=d.data(); await S.db.collection("indicators").add({fy:S.fy, group:x.group||"", code:x.code, name:x.name, created:Date.now()}); }
+      toast("คัดลอก "+snap.size+" ตัวชี้วัดแล้ว"); }catch(err){fail(err)} return; }
+  if(t.id==="csv"){ exportCsv(); return; }
+  const p=S.panel; if(!p) return;
+  if(p.type==="task"){
+    const g=t.closest("[data-grp]"); if(g){ captureTask(); const grp=g.dataset.grp; const ids=S.staff.filter(s=>(s.position||"ไม่ระบุตำแหน่ง")===grp && (s.active!==false) && (!p.filter||s.name.includes(p.filter))).map(s=>s.id);
+      const set=new Set(p.draft.assignees); ids.forEach(id=> g.dataset.all==="1"? set.add(id) : set.delete(id)); p.draft.assignees=[...set]; renderPanel(); return; }
+    const rb=t.closest("[data-res]"); if(rb){ captureTask(); const id=rb.dataset.res, st=rb.dataset.st; const r=p.draft.results[id]=p.draft.results[id]||{};
+      r.status = r.status===st? null : st; renderPanel(); return; }
+    if(t.id==="allOn"){ captureTask(); p.draft.assignees.forEach(id=>{ const r=p.draft.results[id]=p.draft.results[id]||{}; r.status="on"; if(!r.date && p.draft.due) r.date=p.draft.due; }); renderPanel(); return; }
+    if(t.id==="delTask"){ if(S.armed!=="task"){ captureTask(); S.armed="task"; renderPanel(); return; }
+      try{ await S.db.doc("tasks/"+p.id).delete(); closePanel(); toast("ลบงานแล้ว"); }catch(err){fail(err)} return; }
+  }
+  if(p.type==="staff" && t.id==="delStaff"){ if(S.armed!=="staff"){ S.armed="staff"; renderPanel(); return; }
+    try{ await S.db.doc("staff/"+p.draft.id).delete(); closePanel(); toast("ลบรายชื่อแล้ว"); }catch(err){fail(err)} return; }
+  if(p.type==="ind" && t.id==="delInd"){ if(S.armed!=="ind"){ S.armed="ind"; renderPanel(); return; }
+    try{ await S.db.doc("indicators/"+p.draft.id).delete(); closePanel(); toast("ลบตัวชี้วัดแล้ว"); }catch(err){fail(err)} return; }
+});
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape"){ if(S.pop){ S.pop=null; render(); } else if(S.panel) closePanel(); }
+  if(e.key==="Enter" && e.target.matches(".task[data-task], td.cell[data-cell]")) e.target.click();
+});
+addEventListener("resize", ()=>{ if(S.pop) renderPop(); });
+document.addEventListener("scroll", e=>{ if(S.pop && innerWidth>600 && !(e.target.closest && e.target.closest(".pop"))){ S.pop=null; document.querySelectorAll(".mx td.cell.sel").forEach(c=>c.classList.remove("sel")); renderPop(); } }, true);
+document.addEventListener("change", async e=>{
+  const t=e.target;
+  if(t.id==="fy"){ setFy(t.value); return; }
+  if(t.id==="posf"){ S.posFilter=t.value; render(); return; }
+  if(t.id==="indGroup"){ $("#indOther").hidden = t.value!=="__other"; return; }
+  if(t.id==="eGroup"){ $("#eOther").hidden = t.value!=="__other"; return; }
+  if(S.pop && (t.id==="popDate"||t.id==="popNote")){ await writeCell(S.pop.tid,S.pop.sid, t.id==="popDate"?{date:t.value}:{note:t.value}); return; }
+  const p=S.panel;
+  if(p && p.type==="task"){
+    if(t.dataset.pick){ captureTask(); const set=new Set(p.draft.assignees); t.checked?set.add(t.dataset.pick):set.delete(t.dataset.pick); p.draft.assignees=[...set]; renderPanel(); return; }
+    if(t.dataset.rdate!=null || t.id==="tDue"){ captureTask(); renderPanel(); return; }
+  }
+});
+document.addEventListener("input", e=>{
+  const t=e.target;
+  if(t.id==="q"){ S.q=t.value.trim(); const pos=t.selectionStart; render(); const q=$("#q"); q.focus(); try{q.setSelectionRange(pos,pos)}catch(_){} return; }
+  if(t.id==="pickQ" && S.panel){ captureTask(); S.panel.filter=t.value; renderPanel(); const q=$("#pickQ"); q.focus(); q.setSelectionRange(q.value.length,q.value.length); }
+});
+function captureTask(){ const p=S.panel; if(!p||p.type!=="task"||!S.canEdit) return; const d=p.draft;
+  const v=id=>{const el=document.getElementById(id); return el?el.value:undefined;};
+  if(v("tName")!==undefined){ d.name=v("tName"); d.indicatorId=v("tInd")||d.indicatorId; d.due=v("tDue"); d.note=v("tNote"); }
+  document.querySelectorAll("[data-rdate]").forEach(el=>{ const r=d.results[el.dataset.rdate]=d.results[el.dataset.rdate]||{}; r.date=el.value; });
+  document.querySelectorAll("[data-rnote]").forEach(el=>{ const r=d.results[el.dataset.rnote]=d.results[el.dataset.rnote]||{}; r.note=el.value; });
+}
+async function resolveGroup(selId, otherId){
+  const v=$("#"+selId).value; if(v!=="__other") return v;
+  const g=$("#"+otherId).value.trim(); if(!g) return null;
+  if(!allGroups().includes(g)) await S.db.doc("settings/groups").set({custom:[...S.customGroups, g]});
+  return g;
+}
+document.addEventListener("submit", async e=>{
+  e.preventDefault(); const f=e.target; if(!S.canEdit) return;
+  try{
+    if(f.id==="groupForm"){ const g=$("#newGroup").value.trim(); if(!g) return;
+      if(!allGroups().includes(g)) await S.db.doc("settings/groups").set({custom:[...S.customGroups,g]});
+      S.addingGroup=false; S.group=g; render(); toast("เพิ่มกลุ่มงาน “"+g+"” แล้ว"); }
+    else if(f.id==="indForm"){ const code=$("#indCode").value.trim(), name=$("#indName").value.trim(); if(!code||!name) return;
+      const group=await resolveGroup("indGroup","indOther"); if(!group){ toast("ระบุชื่อกลุ่มงานก่อน"); return; }
+      await S.db.collection("indicators").add({fy:S.fy, group, code, name, created:Date.now()}); toast("เพิ่มตัวชี้วัด "+code+" ในกลุ่ม "+group+" แล้ว"); $("#indCode").value=""; $("#indName").value=""; }
+    else if(f.id==="indEdit"){ const d=S.panel.draft; const group=await resolveGroup("eGroup","eOther"); if(!group){ toast("ระบุชื่อกลุ่มงานก่อน"); return; }
+      await S.db.doc("indicators/"+d.id).update({group, code:$("#eCode").value.trim(), name:$("#eName").value.trim()}); closePanel(); toast("บันทึกแล้ว"); }
+    else if(f.id==="taskForm"){ captureTask(); const p=S.panel, d=p.draft; if(!d.name.trim()){ toast("ใส่ชื่องานก่อนบันทึก"); return; }
+      const results={}; d.assignees.forEach(id=>{ const r=d.results[id]; if(r&&(r.status||r.date||r.note)) results[id]={status:r.status||null,date:r.date||"",note:r.note||""}; });
+      const body={fy:d.fy||S.fy, indicatorId:d.indicatorId, name:d.name.trim(), due:d.due||"", note:d.note||"", assignees:d.assignees, results, updated:Date.now(), created:d.created||Date.now()};
+      const ref = p.isNew? S.db.collection("tasks").doc() : S.db.doc("tasks/"+p.id);
+      await ref.set(body); closePanel(); toast((p.isNew?"เพิ่มงานแล้ว":"บันทึกแล้ว")+(d.assignees.length?"":" · ยังไม่ได้เลือกผู้รับผิดชอบ")); }
+    else if(f.id==="staffForm"){ const p=S.panel; const body={name:$("#sName").value.trim(), position:$("#sPos").value.trim(), order:Number($("#sOrder").value)||0, active:$("#sActive").checked};
+      if(!body.name) return; if(p.isNew) await S.db.collection("staff").add(body); else await S.db.doc("staff/"+p.draft.id).set(body); closePanel(); toast("บันทึกแล้ว"); }
+    else if(f.id==="scoreForm"){ const sc={}; STATUS.forEach(x=>{ const n=parseFloat($("#sc-"+x.k).value); sc[x.k]=isNaN(n)?DEFAULT_SCORE[x.k]:n; }); await S.db.doc("settings/scoring").set(sc); toast("บันทึกเกณฑ์คะแนนแล้ว"); }
+    else if(f.id==="bulkForm"){ const lines=$("#bulk").value.split(/\n/).map(l=>l.trim()).filter(Boolean); let o=Math.max(0,...S.staff.map(s=>s.order||0));
+      for(const l of lines){ const [name,...rest]=l.split(/[,\t]/); if(!name.trim()) continue; await S.db.collection("staff").add({name:name.trim(), position:rest.join(",").trim(), order:++o, active:true}); }
+      $("#bulk").value=""; toast("เพิ่ม "+lines.length+" รายชื่อแล้ว"); }
+  }catch(err){ fail(err); }
+});
+
+async function exportCsv(){
+  const tasks=visTasks(); const st=personStats(tasks); const inds=visInds();
+  const head=["ที่","ชื่อ-สกุล","ตำแหน่ง","จำนวนงาน","จำนวนตัวชี้วัด","ครบตรงเวลา","ไม่ครบ/ไม่ตามกำหนด","ล่าช้า","ไม่ส่ง","รอประเมิน","คะแนนรวม","คะแนนเฉลี่ยต่องาน",...inds.map(i=>groupOfInd(i)+" "+i.code)];
+  const rows=[...S.staff].sort((a,b)=>(a.order||0)-(b.order||0)).filter(s=>s.active!==false||st[s.id].tasks).map((s,i)=>{ const p=st[s.id];
+    return [i+1,s.name,s.position||"",p.tasks,p.nInd,p.on,p.partial,p.late,p.none,p.wait,p.score,p.avg==null?"":Math.round(p.avg*100)/100,...inds.map(ind=>p.byInd[ind.id]||0)]; });
+  const csv="﻿"+[head,...rows].map(r=>r.map(c=>{ const s=String(c); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }).join(",")).join("\r\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download=`ภาระงานบุคลากร_ปีงบ${S.fy}${S.group?"_"+S.group:""}.csv`; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+}
+
+/* ---------- data ---------- */
+function setFy(fy){
+  S.fy=fy; S.loaded.tasks=false; S.indicators=[]; S.tasks=[]; S.pop=null; S.assignPop=null; closePanel();
+  try{ localStorage.setItem("fy", fy); }catch(_){}
+  unsubFy.forEach(u=>u()); unsubFy=[];
+  if(!S.db){ render(); return; }
+  let gotI=false, gotT=false;
+  unsubFy.push(S.db.collection("indicators").where("fy","==",fy).onSnapshot(s=>{ S.indicators=s.docs.map(d=>({id:d.id,...d.data()})); gotI=true; if(gotT) S.loaded.tasks=true; render(); }, fail));
+  unsubFy.push(S.db.collection("tasks").where("fy","==",fy).onSnapshot(s=>{ S.tasks=s.docs.map(d=>({id:d.id,...d.data()})); gotT=true; if(gotI) S.loaded.tasks=true;
+    const p=S.panel; if(p&&p.type==="task"&&!p.isNew&&!S.tasks.some(t=>t.id===p.id)) S.panel=null; render(); }, fail));
+  render();
+}
+document.addEventListener("submit", async e=>{
+  const f=e.target;
+  if(f.id==="loginForm"){ e.preventDefault(); e.stopImmediatePropagation(); const p=S.panel; p.busy=true; p.err=""; const pass=$("#adminPass").value; renderPanel();
+    let ok=false; try{ ok=await NFE.login(pass); }catch(err){ p.err="เชื่อมต่อไม่ได้ ลองใหม่"; }
+    p.busy=false; if(ok){ S.isAdmin=true; S.assets={upload:NFE.upload}; closePanel(); render(); toast("เข้าสู่ระบบผู้ดูแลแล้ว"); NFE.refresh().catch(()=>{}); } else { p.err=p.err||"รหัสไม่ถูกต้อง"; renderPanel(); } }
+  if(f.id==="viewForm"){ e.preventDefault(); e.stopImmediatePropagation(); NFE.setViewPass($("#viewPass").value); NFE.store.error=null; render(); NFE.refresh().catch(()=>render()); }
+}, true);
+async function start(){
+  let fy=currentFY(); try{ fy=localStorage.getItem("fy")||fy; }catch(_){}
+  S.fy=fy;
+  if(!NFE.configured){ render(); return; }
+  const db=NFE.db; S.db=db; S.sample=null; S.sampleCaps=null;
+  window.onDbWriteError = fail;
+  NFE.checkAdmin().then(ok=>{ S.isAdmin=ok; S.assets= ok? {upload:NFE.upload} : null; render(); });
+  const _l={fire:()=>render()}; NFE.store.listeners.add(_l);
+  NFE.start();
+  db.collection("staff").onSnapshot(s=>{ S.staff=s.docs.map(d=>({id:d.id,...d.data()})); S.loaded.staff=true; render(); }, fail);
+  db.collection("years").onSnapshot(s=>{ S.years=s.docs.map(d=>({id:d.id,...d.data()})); render(); }, fail);
+  db.doc("settings/scoring").onSnapshot(s=>{ S.scoring = s.exists? {...DEFAULT_SCORE,...s.data()} : {...DEFAULT_SCORE}; render(); }, fail);
+  db.doc("settings/groups").onSnapshot(s=>{ S.customGroups = (s.exists && Array.isArray(s.data().custom))? s.data().custom.map(String) : []; render(); }, fail);
+  setFy(fy);
+}
+render(); start();
+})();
+</script>
+
+</body>
+</html>
