@@ -530,7 +530,7 @@ function viewGrid(){
       topics.map(tp=>{ const key="g:"+tp.name+"|"+s.id; const has=tp.list.some(t=>(t.assignees||[]).includes(s.id));
         return `<td class="cell${key===sel?" sel":""}" data-cell="${esc(key)}" ${has?`data-tip="${esc(s.id)}"`:""} tabindex="0">${aggPill(tp.list,s.id)}</td>`; }).join("")+
       `<td class="tot" data-tip="${esc(s.id)}">${p.tasks||"·"}</td><td class="tot" data-tip="${esc(s.id)}">${p.nInd||"·"}</td><td class="tot ${p.score<0?"neg":""}" data-tip="${esc(s.id)}">${p.tasks?fmtScore(p.score):"·"}</td></tr>`; }).join("");
-  return quickForm() + `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)} <span class="mini">(${topics.length} หัวข้อ · ${tasks.length} งาน)</span></h2>${filterBar()}</div>
+  return quickForm() + `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)} <span class="mini">(${topics.length} หัวข้อ · ${tasks.length} งาน)</span></h2>${filterBar('<button type="button" class="btn line" data-line="summary">ส่งสรุปไป LINE</button>')}</div>
   <div class="mx"><table>
     <thead><tr><th class="sticky" style="vertical-align:bottom;padding:6px 10px">บุคลากร (${rows.length} คน)</th>${head}<th class="tot">งาน</th><th class="tot">ตัวชี้วัด</th><th class="tot">คะแนน</th></tr></thead>
     <tbody>${body || `<tr><td class="empty" colspan="${topics.length+4}">ไม่พบบุคลากรตามเงื่อนไข</td></tr>`}</tbody>
@@ -566,7 +566,7 @@ function renderPop(){
     <div class="ptitle">${esc(title)}</div>
     ${!mine.length && !ro && list.length===1? `<p class="mini" style="margin:4px 0 0">กดมอบหมาย แล้วเลือกคะแนนได้ทันที</p>`:""}
     <div class="plist">${mine.map(row).join("")}${others.length? (mine.length?`<div class="mini" style="margin:10px 0 4px">รายการอื่นในหัวข้อนี้ที่ยังไม่ได้รับ</div>`:"")+others.map(row).join(""):""}</div>
-    <div class="pfoot" style="margin-top:10px;justify-content:flex-end"><button type="button" class="btn sm" id="popClose">ปิด</button></div>
+    <div class="pfoot" style="margin-top:10px;justify-content:space-between"><button type="button" class="btn sm line" data-line="${esc(list.length===1? "task:"+list[0].id : "person:"+s.id)}">${list.length===1?"ส่งงานนี้ไป LINE":"ส่งงานของคนนี้ไป LINE"}</button><button type="button" class="btn sm" id="popClose">ปิด</button></div>
   </div>`;
   const pop=L.firstElementChild; const cell=document.querySelector(`[data-cell="${CSS.escape(p.key+"|"+p.sid)}"]`);
   if(!cell && innerWidth>600){ pop.style.left=Math.max(12,(innerWidth-pop.offsetWidth)/2)+"px"; pop.style.top="90px"; }
