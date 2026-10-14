@@ -467,7 +467,7 @@ function render(){
   if(NFE.store.error && NFE.store.error.code==="view" && !NFE.store.loaded){ v.innerHTML = `<form class="card" id="viewForm" style="max-width:420px"><h3>ใส่รหัสเข้าดู</h3><p class="mini">ระบบนี้ตั้งรหัสสำหรับเปิดดูไว้ ขอรหัสได้จากผู้ดูแลระบบ</p><div class="form"><input type="password" id="viewPass" placeholder="รหัสเข้าดู" required><button class="btn pri" type="submit">เข้าดู</button></div></form>`; return; }
   if(NFE.store.error && !NFE.store.loaded){ v.innerHTML = '<div class="notice">เชื่อมต่อฐานข้อมูลไม่ได้ ตรวจสอบ URL ใน config.js และการตั้งค่าเว็บแอป (ผู้มีสิทธิ์เข้าถึง: ทุกคน) แล้วโหลดหน้าใหม่</div>'; return; }
   if(!S.db || !NFE.store.loaded){ v.innerHTML = '<div class="notice">กำลังโหลดข้อมูล…</div>'; return; }
-  if(S.tab==="grid") v.innerHTML = viewGrid();
+  if(S.tab==="grid" || S.tab==="gridu") v.innerHTML = viewGrid();
   else if(S.tab==="report") v.innerHTML = viewReport();
   else if(S.tab==="manage") v.innerHTML = viewTasks();
   else if(S.tab==="import") v.innerHTML = viewImport();
@@ -479,7 +479,7 @@ function render(){
 }
 const ADMIN_TABS=["import","settings"];
 function renderTabs(){
-  const tabs=[["grid","ตารางคะแนน"],["manage","งานและผู้รับผิดชอบ"],["report","รายงานประจำปี"]];
+  const tabs=[["grid","ตารางคะแนน บุคลากร"],["gridu","ตารางคะแนน ศกร.ตำบล"],["manage","งานและผู้รับผิดชอบ"],["report","รายงานประจำปี"]];
   const adm=[["import","นำเข้าจากไฟล์"],["settings","ตั้งค่า"]];
   const b=([k,l],a)=>`<button class="tab${a?" adm":""}" role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}</button>`;
   const html = tabs.map(t=>b(t)).join("") + (S.canEdit? '<span class="tabsep" aria-hidden="true"></span>'+adm.map(t=>b(t,1)).join("") : "");
@@ -531,24 +531,26 @@ function viewGrid(){
   const topics = topicsOf(tasks);
   if(!tasks.length) return quickForm() + `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)}</h2></div>
     <div class="notice">${S.canEdit? "ยังไม่มีงาน — กด “+ เพิ่มงาน” ด้านบน กรอกแค่ชื่องานก็บันทึกได้ งานจะขึ้นเป็นคอลัมน์ในตารางนี้ แล้วคลิกช่องของแต่ละคนเพื่อมอบหมายและเลือกคะแนน" : "ยังไม่มีงาน รอผู้ดูแลระบบเพิ่มงาน"}</div>`;
-  const rows = staffRowsFor(tasks);
+  const unitTab = S.tab==="gridu";
+  const rows = staffRowsFor(tasks).filter(x=> unitTab? isUnit(x) : !isUnit(x));
+  const rowIds = new Set(rows.map(x=>x.id));
   const st = personStats(tasks);
   const sel = S.pop ? S.pop.key+"|"+S.pop.sid : "";
   const gs=[]; topics.forEach(tp=>{ const l=gs[gs.length-1]; if(l&&l.g===tp.group) l.n++; else gs.push({g:tp.group,n:1}); });
   const gspans = gs.map(x=>`<th class="ihead" colspan="${x.n}" title="${esc(x.g)}"><div class="ihwrap">${esc(x.g)}</div></th>`).join("");
-  const head = topics.map(tp=>{ let n=0,sub=0,over=false; tp.list.forEach(t=>{ const p=taskProg(t); n+=p.n; sub+=p.sub; over=over||p.overdue; });
+  const head = topics.map(tp=>{ let n=0,sub=0,over=false; tp.list.forEach(t=>{ (t.assignees||[]).forEach(id=>{ if(!rowIds.has(id)) return; n++; const k=((t.results||{})[id]||{}).status; if(k&&k!=="none") sub++; else if(t.due&&t.due<todayISO()) over=true; }); });
     const dues=[...new Set(tp.list.map(t=>t.due).filter(Boolean))].sort();
     const dueTxt = !dues.length? "ไม่กำหนดส่ง" : dues.length===1? "ส่ง "+thDate(dues[0]) : "ส่ง "+thDate(dues[0])+" – "+thDate(dues[dues.length-1]);
     return `<th class="tcol" title="${esc(tp.name)}"><div class="tname">${esc(tp.name)}</div><div class="tdue">${tp.list.length>1?tp.list.length+" รายการ · ":""}${dueTxt}<br>${n? `<span style="color:${sub===n?"var(--s-on)":over?"var(--s-none)":"inherit"}">ส่งแล้ว ${sub}/${n}</span>` : '<span style="color:var(--s-none)">ยังไม่ระบุคน</span>'}</div></th>`; }).join("");
-  const firstUnit = rows.find(isUnit);
+  const firstUnit = null;
   const body = rows.map(s=>{ const p=st[s.id];
     return (s===firstUnit? `<tr class="sep"><td class="sticky">ศกร.ระดับตำบล (${rows.filter(isUnit).length} แห่ง)</td><td colspan="${topics.length+3}"></td></tr>` : "") + `<tr><td class="who sticky" data-person="${esc(s.id)}"><div class="nm">${esc(s.name)}</div><div class="pos">${esc(s.position||"")}</div></td>`+
       topics.map(tp=>{ const key="g:"+tp.key+"|"+s.id; const has=tp.list.some(t=>(t.assignees||[]).includes(s.id));
         return `<td class="cell${key===sel?" sel":""}" data-cell="${esc(key)}" ${has?`data-tip="${esc(s.id)}"`:""} tabindex="0">${aggPill(tp.list,s.id)}</td>`; }).join("")+
       `<td class="tot" data-tip="${esc(s.id)}">${p.tasks||"·"}</td><td class="tot" data-tip="${esc(s.id)}">${p.nInd||"·"}</td><td class="tot ${p.score<0?"neg":""}" data-tip="${esc(s.id)}">${p.tasks?fmtScore(p.score):"·"}</td></tr>`; }).join("");
-  return quickForm() + `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)} <span class="mini">(${topics.length} หัวข้อ · ${tasks.length} งาน)</span></h2>${taskSearch()}${filterBar('<button type="button" class="btn line" data-line="summary">ส่งสรุปไป LINE</button>')}</div>
+  return quickForm() + `<div class="bar"><h2 class="grow">ตารางคะแนน${unitTab?" ศกร.ระดับตำบล":" บุคลากร"} · ${esc(gName)} <span class="mini">(${topics.length} หัวข้อ · ${tasks.length} งาน)</span></h2>${taskSearch()}${filterBar('<button type="button" class="btn line" data-line="summary">ส่งสรุปไป LINE</button>')}</div>
   <div class="mx"><table>
-    <thead><tr><th class="sticky" rowspan="2" style="vertical-align:bottom;padding:6px 10px">บุคลากร (${rows.filter(x=>!isUnit(x)).length} คน)${rows.some(isUnit)?` · ศกร.ตำบล ${rows.filter(isUnit).length}`:""}</th>${gspans}<th class="tot" rowspan="2">งาน</th><th class="tot" rowspan="2">ตัวชี้วัด</th><th class="tot" rowspan="2">คะแนน</th></tr>
+    <thead><tr><th class="sticky" rowspan="2" style="vertical-align:bottom;padding:6px 10px">${unitTab? `ศกร.ระดับตำบล (${rows.length} แห่ง)` : `บุคลากร (${rows.length} คน)`}</th>${gspans}<th class="tot" rowspan="2">งาน</th><th class="tot" rowspan="2">ตัวชี้วัด</th><th class="tot" rowspan="2">คะแนน</th></tr>
     <tr>${head}</tr></thead>
     <tbody>${body || `<tr><td class="empty" colspan="${topics.length+4}">ไม่พบบุคลากรตามเงื่อนไข</td></tr>`}</tbody>
   </table></div>
