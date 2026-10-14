@@ -119,7 +119,12 @@ textarea{width:100%;resize:vertical}
 .legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:13px;color:var(--muted);align-items:center;margin-top:10px}
 .legend .pill{min-width:36px;font-size:12px}
 /* popover */
-.pop{position:fixed;z-index:30;width:340px;max-width:calc(100vw - 24px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:14px 16px}
+.plist{display:grid;gap:8px;margin-top:8px}
+.prow{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.prow.mine{border-color:var(--accent);background:var(--bg)}
+.pact{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pop{max-height:min(640px,88vh);overflow:auto}
+.pop{position:fixed;z-index:30;width:380px;max-width:calc(100vw - 24px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:14px 16px}
 .pop .ptitle{font-family:var(--f-display);font-weight:600;font-size:15px;line-height:1.35}
 .pop .pmeta{font-size:13px;color:var(--muted);margin:4px 0 10px}
 .pop .pwho{font-size:13px;margin-bottom:6px}
@@ -277,6 +282,8 @@ table.std tbody tr:last-child td{border-bottom:0}
 .irow{border:1px solid var(--line);border-radius:8px;background:var(--surface);margin-bottom:10px}
 .irow.off{opacity:.5}
 .ihead2{display:grid;grid-template-columns:auto minmax(0,200px) 80px minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:0 12px}
+.qgrid .qwide{grid-column:1/-1}
 .trow{display:grid;grid-template-columns:20px minmax(0,1fr) 150px minmax(0,190px) auto;gap:8px;align-items:center;padding:6px 12px}
 .trow [data-assign]{overflow:hidden;text-overflow:ellipsis;text-align:left}
 .trow .bul{color:var(--muted);text-align:center}
@@ -356,6 +363,17 @@ const sortTasks = list => [...list].sort((a,b)=>{ const ia=indById(a.indicatorId
 
 const shortName = n => String(n||"").replace(/^(นางสาว|นาง|นาย|น\.ส\.)\s*/,"");
 const todayISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const topicOf = t => String(t.name||"").replace(/^[\s\d.()\-–:]+(?=\S)/,"").replace(/\s+/g," ").trim() || String(t.name||"").trim();
+function topicsOf(tasks){ const m=new Map(); sortTasks(tasks).forEach(t=>{ const k=topicOf(t); if(!m.has(k)) m.set(k,[]); m.get(k).push(t); }); return [...m.entries()].map(([name,list])=>({name,list})); }
+function popTasks(key){ if(key.startsWith("t:")){ const t=S.tasks.find(x=>x.id===key.slice(2)); return t?[t]:[]; } const name=key.slice(2); return sortTasks(visTasks()).filter(t=>topicOf(t)===name); }
+function aggPill(list, sid){
+  const mine=list.filter(t=>(t.assignees||[]).includes(sid));
+  if(!mine.length) return S.canEdit? '<span class="plus" aria-hidden="true">+</span>' : "";
+  if(mine.length===1) return pillFor(mine[0], sid);
+  const ks=mine.map(t=>((t.results||{})[sid]||{}).status||null); const sum=ks.reduce((a,k)=>a+(k?scoreOf(k):0),0);
+  const cls = ks.includes("none")?"p-none": ks.includes(null)?"p-wait": ks.every(k=>k==="on")?"p-on": ks.includes("partial")?"p-partial":"p-late";
+  return `<span class="pill ${cls}">${ks.every(k=>!k)?"รอ":fmtScore(sum)}<small style="font-weight:600;opacity:.75;margin-left:3px">×${mine.length}</small></span>`;
+}
 function taskProg(t){ const a=t.assignees||[], r=t.results||{}; let sub=0, ev=0;
   a.forEach(id=>{ const k=r[id]&&r[id].status; if(k) ev++; if(k && k!=="none") sub++; });
   const state = !a.length? "unassigned" : sub===a.length? "done" : "incomplete";
@@ -416,6 +434,11 @@ if(canHover){
   document.addEventListener("mousedown", hideTip, true);
 }
 
+/* ---------- render (deferred while someone is typing) ---------- */
+let renderDeferred=false;
+function isTyping(){ const a=document.activeElement; return !!(a && a.matches && a.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select')); }
+function softRender(){ if(isTyping()){ renderDeferred=true; return; } render(); }
+document.addEventListener("focusout", ()=>setTimeout(()=>{ if(renderDeferred && !isTyping()){ renderDeferred=false; render(); } },200));
 /* ---------- render ---------- */
 function render(){
   S.canEdit = S.isAdmin && !S.viewAsUser;
@@ -487,53 +510,61 @@ function filterBar(extra=""){
 
 function viewGrid(){
   if(!S.loaded.staff || !S.loaded.tasks) return '<div class="notice">กำลังโหลดข้อมูลปีงบประมาณ '+esc(S.fy)+'…</div>';
-  const tasks = sortTasks(visTasks());
+  const tasks = visTasks();
   const gName = S.group || "ทุกกลุ่มงาน";
-  if(!tasks.length) return `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)}</h2></div>
-    <div class="notice">${S.indicators.length? "กลุ่มงานนี้ยังไม่มีงาน" : "ปีงบประมาณ "+esc(S.fy)+" ยังไม่มีตัวชี้วัดและงาน"} ${S.canEdit? " — ผู้ดูแลระบบเพิ่มได้ที่แท็บ “นำเข้าจากไฟล์” หรือ “งานและผู้รับผิดชอบ” งานจะปรากฏเป็นคอลัมน์ในตารางนี้ แล้วคลิกช่องของแต่ละคนเพื่อมอบหมายและเลือกคะแนน" : " — รอผู้ดูแลระบบเพิ่มงาน"}</div>`;
+  const topics = topicsOf(tasks);
+  if(!tasks.length) return quickForm() + `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)}</h2></div>
+    <div class="notice">${S.canEdit? "ยังไม่มีงาน — กด “+ เพิ่มงาน” ด้านบน กรอกแค่ชื่องานก็บันทึกได้ งานจะขึ้นเป็นคอลัมน์ในตารางนี้ แล้วคลิกช่องของแต่ละคนเพื่อมอบหมายและเลือกคะแนน" : "ยังไม่มีงาน รอผู้ดูแลระบบเพิ่มงาน"}</div>`;
   const rows = staffRowsFor(tasks);
   const st = personStats(tasks);
-  // indicator header spans
-  const spans=[]; tasks.forEach(t=>{ const last=spans[spans.length-1]; if(last && last.id===t.indicatorId) last.n++; else spans.push({id:t.indicatorId,n:1}); });
-  const sel = S.pop ? S.pop.tid+"|"+S.pop.sid : "";
-  const head1 = spans.map(sp=>{ const i=indById(sp.id); return `<th class="ihead" colspan="${sp.n}" title="${esc(i?(i.code+" "+i.name):"ไม่มีตัวชี้วัด")}"><div class="ihwrap">${i?esc(i.code)+" <span style='color:var(--muted);font-family:var(--f-body);font-weight:500'>"+esc(i.name)+"</span>":"ไม่มีตัวชี้วัด"}</div></th>`; }).join("");
-  const head2 = tasks.map(t=>`<th class="tcol" data-task="${esc(t.id)}" title="${esc(t.name)}"><div class="tname">${esc(t.name)}</div><div class="tdue">ส่ง ${thDate(t.due)} · ${(()=>{const p=taskProg(t); return p.n? `<span style="color:${p.state==="done"?"var(--s-on)":p.overdue?"var(--s-none)":"inherit"}">ส่งแล้ว ${p.sub}/${p.n}</span>` : '<span style="color:var(--s-none)">ยังไม่ระบุคน</span>';})()}</div></th>`).join("");
+  const sel = S.pop ? S.pop.key+"|"+S.pop.sid : "";
+  const head = topics.map(tp=>{ let n=0,sub=0,over=false; tp.list.forEach(t=>{ const p=taskProg(t); n+=p.n; sub+=p.sub; over=over||p.overdue; });
+    const dues=[...new Set(tp.list.map(t=>t.due).filter(Boolean))].sort();
+    const dueTxt = !dues.length? "ไม่กำหนดส่ง" : dues.length===1? "ส่ง "+thDate(dues[0]) : "ส่ง "+thDate(dues[0])+" – "+thDate(dues[dues.length-1]);
+    return `<th class="tcol" title="${esc(tp.name)}"><div class="tname">${esc(tp.name)}</div><div class="tdue">${tp.list.length>1?tp.list.length+" รายการ · ":""}${dueTxt}<br>${n? `<span style="color:${sub===n?"var(--s-on)":over?"var(--s-none)":"inherit"}">ส่งแล้ว ${sub}/${n}</span>` : '<span style="color:var(--s-none)">ยังไม่ระบุคน</span>'}</div></th>`; }).join("");
   const body = rows.map(s=>{ const p=st[s.id];
     return `<tr><td class="who sticky" data-person="${esc(s.id)}"><div class="nm">${esc(s.name)}</div><div class="pos">${esc(s.position||"")}</div></td>`+
-      tasks.map(t=>{ const key=t.id+"|"+s.id; return `<td class="cell${key===sel?" sel":""}" data-cell="${esc(key)}" ${(t.assignees||[]).includes(s.id)?`data-tip="${esc(s.id+"|"+t.id)}"`:""} tabindex="0">${pillFor(t,s.id)}</td>`; }).join("")+
+      topics.map(tp=>{ const key="g:"+tp.name+"|"+s.id; const has=tp.list.some(t=>(t.assignees||[]).includes(s.id));
+        return `<td class="cell${key===sel?" sel":""}" data-cell="${esc(key)}" ${has?`data-tip="${esc(s.id)}"`:""} tabindex="0">${aggPill(tp.list,s.id)}</td>`; }).join("")+
       `<td class="tot" data-tip="${esc(s.id)}">${p.tasks||"·"}</td><td class="tot" data-tip="${esc(s.id)}">${p.nInd||"·"}</td><td class="tot ${p.score<0?"neg":""}" data-tip="${esc(s.id)}">${p.tasks?fmtScore(p.score):"·"}</td></tr>`; }).join("");
-  return `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)} <span class="mini">(${tasks.length} งาน)</span></h2>${filterBar()}</div>
+  return quickForm() + `<div class="bar"><h2 class="grow">ตารางคะแนน · ${esc(gName)} <span class="mini">(${topics.length} หัวข้อ · ${tasks.length} งาน)</span></h2>${filterBar()}</div>
   <div class="mx"><table>
-    <thead><tr><th class="sticky" rowspan="2" style="vertical-align:bottom;padding:6px 10px">บุคลากร (${rows.length} คน)</th>${head1}<th class="tot" rowspan="2">งาน</th><th class="tot" rowspan="2">ตัวชี้วัด</th><th class="tot" rowspan="2">คะแนน</th></tr>
-    <tr>${head2}</tr></thead>
-    <tbody>${body || `<tr><td class="empty" colspan="${tasks.length+4}">ไม่พบบุคลากรตามเงื่อนไข</td></tr>`}</tbody>
+    <thead><tr><th class="sticky" style="vertical-align:bottom;padding:6px 10px">บุคลากร (${rows.length} คน)</th>${head}<th class="tot">งาน</th><th class="tot">ตัวชี้วัด</th><th class="tot">คะแนน</th></tr></thead>
+    <tbody>${body || `<tr><td class="empty" colspan="${topics.length+4}">ไม่พบบุคลากรตามเงื่อนไข</td></tr>`}</tbody>
   </table></div>
   <div class="legend">${STATUS.map(x=>`<span><span class="pill p-${x.k}">${fmtScore(S.scoring[x.k])}</span> ${x.label}</span>`).join("")}
-    <span><span class="pill p-wait">รอ</span> มอบหมายแล้ว รอประเมิน</span><span>ช่องว่าง = ไม่ได้รับผิดชอบ · ชี้เมาส์ที่คะแนนเพื่อดูว่ารับผิดชอบกี่งาน/กี่ตัวชี้วัด · คลิกช่องเพื่อดูงานและเลือกคะแนน · คลิกชื่อเพื่อดูงานทั้งหมด</span></div>`;
+    <span><span class="pill p-wait">รอ</span> รอประเมิน</span><span><span class="pill p-on">2<small style="margin-left:3px">×2</small></span> รับหลายรายการในหัวข้อเดียวกัน (คะแนนรวม)</span>
+    <span>งานชื่อเดียวกันรวมเป็นคอลัมน์เดียว · คลิกช่องเพื่อมอบหมาย/ให้คะแนน · ชี้เมาส์ที่คะแนนเพื่อดูจำนวนงาน</span></div>`;
 }
 
+const SHORT={on:"ครบ ตรงเวลา",partial:"ไม่ครบ/ไม่ตามกำหนด",late:"ล่าช้า",none:"ไม่ส่ง"};
 function renderPop(){
   const L=$("#poplayer"); const p=S.pop;
   if(!p){ L.innerHTML=""; return; }
-  const t=S.tasks.find(x=>x.id===p.tid), s=staffById(p.sid);
-  if(!t||!s){ S.pop=null; L.innerHTML=""; return; }
-  const i=indById(t.indicatorId); const assigned=(t.assignees||[]).includes(s.id);
-  const r=(t.results||{})[s.id]||{}; const ro=!S.canEdit;
-  const lateDays = (r.date && t.due && r.date>t.due) ? Math.round((new Date(r.date)-new Date(t.due))/864e5) : 0;
+  const s=staffById(p.sid); const list=popTasks(p.key);
+  if(!s||!list.length){ S.pop=null; L.innerHTML=""; return; }
+  const ro=!S.canEdit;
+  const mine=list.filter(t=>(t.assignees||[]).includes(s.id)), others=list.filter(t=>!(t.assignees||[]).includes(s.id));
+  const row = t => { const i=indById(t.indicatorId); const as=(t.assignees||[]).includes(s.id); const r=(t.results||{})[s.id]||{};
+    const late = (r.date && t.due && r.date>t.due) ? Math.round((new Date(r.date)-new Date(t.due))/864e5) : 0;
+    const meta = `${i&&i.name?esc((i.code?i.code+" ":"")+i.name)+" · ":""}กำหนดส่ง ${thDate(t.due)} · ${(t.assignees||[]).length} คน`;
+    if(!as) return ro? "" : `<div class="prow"><div class="pmeta" style="margin:0">${list.length>1&&t.name.trim()!==topicOf(t)?`<b style="color:var(--ink)">${esc(t.name)}</b><br>`:""}${meta}</div>
+      <div class="pact"><button type="button" class="btn sm pri" data-pact="assign" data-ptid="${esc(t.id)}">มอบหมายงานนี้</button></div></div>`;
+    return `<div class="prow mine"><div class="pmeta" style="margin:0 0 6px">${list.length>1&&t.name.trim()!==topicOf(t)?`<b style="color:var(--ink)">${esc(t.name)}</b><br>`:""}${meta}</div>
+      ${ro? `<div class="mini">ผล: ${r.status?`<span class="st st-${r.status}">${STATUS.find(x=>x.k===r.status).label}</span> (${fmtScore(scoreOf(r.status))})`:"รอประเมิน"}${r.date?" · ส่ง "+thDate(r.date):""}</div>`
+      : `<div class="choices">${STATUS.map(x=>`<button type="button" class="choice ${x.k}" data-pick-st="${x.k}" data-ptid="${esc(t.id)}" aria-pressed="${r.status===x.k}"><span class="sc pill p-${x.k}">${fmtScore(S.scoring[x.k])}</span><span class="lb">${SHORT[x.k]}</span></button>`).join("")}</div>
+        <div class="pfields"><label>วันที่ส่ง</label><span><input type="date" class="popDate" data-ptid="${esc(t.id)}" value="${esc(r.date||"")}" aria-label="วันที่ส่ง"> ${late>0?`<span class="hint">ช้า ${late} วัน</span>`:""}</span>
+          <label>หมายเหตุ</label><input type="text" class="popNote" data-ptid="${esc(t.id)}" value="${esc(r.note||"")}" aria-label="หมายเหตุ"></div>
+        <div class="pact"><button type="button" class="btn sm" data-pact="clear" data-ptid="${esc(t.id)}">ล้างผล</button><button type="button" class="btn sm danger" data-pact="unassign" data-ptid="${esc(t.id)}">ยกเลิกมอบหมาย</button><button type="button" class="btn sm ghost" data-task="${esc(t.id)}">เปิดงานเต็ม</button></div>`}</div>`; };
+  const title = list.length>1? topicOf(list[0]) : list[0].name;
   L.innerHTML = `<div class="pop" role="dialog" aria-label="งานของ ${esc(s.name)}">
-    <div class="pwho">${assigned?"ผู้รับผิดชอบ":"ยังไม่ได้มอบหมายให้"} <b>${esc(s.name)}</b></div>
-    <div class="ptitle">${esc(t.name)}</div>
-    <div class="pmeta">${i?esc(i.code)+" "+esc(i.name)+" · "+esc(groupOfInd(i))+"<br>":""}กำหนดส่ง ${thDate(t.due)} · ผู้รับผิดชอบ ${(t.assignees||[]).length} คน${t.note?"<br>"+esc(t.note):""}</div>
-    ${ro? (assigned? `<div class="mini">ผล: ${r.status?`<span class="st st-${r.status}">${STATUS.find(x=>x.k===r.status).label}</span> (${fmtScore(scoreOf(r.status))} คะแนน)`:"รอประเมิน"}</div>`:"")
-    : `<div class="choices">${STATUS.map(x=>`<button type="button" class="choice ${x.k}" data-pick-st="${x.k}" aria-pressed="${assigned&&r.status===x.k}"><span class="sc pill p-${x.k}">${fmtScore(S.scoring[x.k])}</span><span class="lb">${x.label}</span></button>`).join("")}</div>
-      ${assigned?`<div class="pfields"><label for="popDate">วันที่ส่ง</label><span><input type="date" id="popDate" value="${esc(r.date||"")}"> ${lateDays>0?`<span class="hint">ช้า ${lateDays} วัน</span>`:""}</span>
-        <label for="popNote">หมายเหตุ</label><input type="text" id="popNote" value="${esc(r.note||"")}"></div>`:`<p class="mini" style="margin:0 0 10px">เลือกคะแนนเพื่อมอบหมายพร้อมบันทึกผล หรือกด “มอบหมายงานนี้” เพื่อมอบหมายไว้ก่อน</p>`}
-      <div class="pfoot">${assigned?`<button type="button" class="btn sm" id="popClear">ล้างผล</button><button type="button" class="btn sm danger" id="popUnassign">ยกเลิกมอบหมาย</button>`
-        :`<button type="button" class="btn sm pri" id="popAssign">มอบหมายงานนี้</button>`}
-        <button type="button" class="btn sm ghost" data-task="${esc(t.id)}">เปิดงานเต็ม</button><button type="button" class="btn sm" id="popClose">ปิด</button></div>`}
-    ${ro?`<div class="pfoot" style="margin-top:10px"><button type="button" class="btn sm" id="popClose">ปิด</button></div>`:""}
+    <div class="pwho">${mine.length?`รับผิดชอบ ${mine.length} รายการ`:"ยังไม่ได้มอบหมาย"} · <b>${esc(s.name)}</b></div>
+    <div class="ptitle">${esc(title)}</div>
+    ${!mine.length && !ro && list.length===1? `<p class="mini" style="margin:4px 0 0">กดมอบหมาย แล้วเลือกคะแนนได้ทันที</p>`:""}
+    <div class="plist">${mine.map(row).join("")}${others.length&&!ro? (mine.length?`<div class="mini" style="margin:10px 0 4px">รายการอื่นในหัวข้อนี้ที่ยังไม่ได้รับ</div>`:"")+others.map(row).join(""):""}</div>
+    <div class="pfoot" style="margin-top:10px;justify-content:flex-end"><button type="button" class="btn sm" id="popClose">ปิด</button></div>
   </div>`;
-  const pop=L.firstElementChild; const cell=document.querySelector(`[data-cell="${CSS.escape(p.tid+"|"+p.sid)}"]`);
+  const pop=L.firstElementChild; const cell=document.querySelector(`[data-cell="${CSS.escape(p.key+"|"+p.sid)}"]`);
   if(!cell && innerWidth>600){ pop.style.left=Math.max(12,(innerWidth-pop.offsetWidth)/2)+"px"; pop.style.top="90px"; }
   if(cell && innerWidth>600){ const rc=cell.getBoundingClientRect(); const w=pop.offsetWidth, h=pop.offsetHeight;
     let x=rc.right+8, y=rc.top-10; if(x+w>innerWidth-12) x=rc.left-w-8; if(x<12) x=Math.max(12,Math.min(innerWidth-w-12,rc.left));
@@ -546,7 +577,9 @@ async function writeCell(tid,sid,patch,opts={}){
   if(opts.unassign){ assignees=assignees.filter(x=>x!==sid); body.assignees=assignees; body.results={[sid]:null}; }
   else { if(!assignees.includes(sid)){ assignees.push(sid); body.assignees=assignees; }
     if(patch) body.results={[sid]:{status:null,date:"",note:"",...((t.results||{})[sid]||{}),...patch}}; }
-  try{ await S.db.doc("tasks/"+tid).update(body); }catch(err){ fail(err); }
+  const p=S.db.doc("tasks/"+tid).update(body);
+  const loc=S.tasks.find(x=>x.id===tid); if(loc){ if(body.assignees) loc.assignees=body.assignees; if(body.results){ loc.results={...(loc.results||{})}; for(const k in body.results) loc.results[k]=body.results[k]; } }
+  try{ await p; }catch(err){ fail(err); }
 }
 
 function viewReport(){
@@ -619,7 +652,7 @@ function viewTasks(){
   const defGroup = S.group && S.group!==UNGROUPED ? S.group : GROUPS_FIXED[0];
   const addForm = `<div class="card edit-only" style="margin-bottom:8px"><h3>เพิ่มตัวชี้วัดย่อย</h3>
     <form class="form" id="indForm">${groupSelect("indGroup",defGroup)}<input type="text" id="indOther" placeholder="ระบุชื่อกลุ่มงาน" hidden>
-    <input type="text" id="indCode" placeholder="รหัส เช่น 1.1" style="flex:0 1 110px" required>
+    <input type="text" id="indCode" placeholder="รหัส (ไม่บังคับ)" style="flex:0 1 130px">
     <input type="text" id="indName" placeholder="ชื่อตัวชี้วัดย่อย" required><button class="btn pri" type="submit">เพิ่ม</button></form>
     ${S.indicators.length===0?`<p class="mini" style="margin:10px 0 0">หรือ <button class="btn sm" type="button" id="copyInd">คัดลอกตัวชี้วัดจากปีงบประมาณ ${esc(prevFy)}</button> (เฉพาะชื่อตัวชี้วัดและกลุ่มงาน ไม่คัดลอกงาน)</p>`:""}</div>`;
   const all = visTasks(); const cnt={unassigned:0,incomplete:0,done:0}; all.forEach(t=>cnt[taskProg(t).state]++);
@@ -634,7 +667,7 @@ function viewTasks(){
     const badge = p.state==="unassigned"? '<span class="chip c-zero">ยังไม่ระบุผู้รับผิดชอบ</span>' : p.state==="done"? '<span class="chip c-ok">ส่งครบแล้ว</span>'
       : `<span class="chip ${p.overdue?"c-zero":"c-high"}">${p.overdue?"เลยกำหนด · ":""}ยังไม่ส่ง ${p.n-p.sub} คน</span>`;
     const people = a.map(id=>{ const s=staffById(id); const k=r[id]&&r[id].status;
-      return `<button type="button" class="pchip ${k?"k-"+k:"k-wait"}" data-cell="${esc(t.id+"|"+id)}" data-tip="${esc(id+"|"+t.id)}">${esc(shortName(s?.name||"(ไม่พบรายชื่อ)"))}<b>${k?fmtScore(scoreOf(k)):"รอ"}</b></button>`; }).join("");
+      return `<button type="button" class="pchip ${k?"k-"+k:"k-wait"}" data-cell="${esc("t:"+t.id+"|"+id)}" data-tip="${esc(id+"|"+t.id)}">${esc(shortName(s?.name||"(ไม่พบรายชื่อ)"))}<b>${k?fmtScore(scoreOf(k)):"รอ"}</b></button>`; }).join("");
     return `<div class="task2"><div class="t-top"><div class="t-main" data-task="${esc(t.id)}" tabindex="0"><div class="tn">${esc(t.name)}</div>
         <div class="tm">กำหนดส่ง ${thDate(t.due)}${p.n?` · ผู้รับผิดชอบ ${p.n} คน · ส่งแล้ว ${p.sub}/${p.n}`:""}</div></div>${badge}</div>
       ${p.n?`<div class="prog" aria-hidden="true"><span style="width:${p.sub/p.n*100}%"></span></div>`:""}
@@ -652,7 +685,7 @@ function viewTasks(){
   const body = groupsShown.map(g=>{ const list=inds.filter(i=>groupOfInd(i)===g && (!S.taskFilter || tasksOf(i.id).length)); const extra = g===UNGROUPED && orphan.length;
       if(!list.length && !extra) return "";
       return `<div class="ghead">${esc(g)}</div>` + list.map(i=>block(i, tasksOf(i.id))).join("") + (extra? block(null, orphan):""); }).join("");
-  return addForm + head + (body || '<div class="notice">ไม่มีงานตามตัวกรองนี้</div>') +
+  return quickForm() + addForm + head + (body || '<div class="notice">ไม่มีงานตามตัวกรองนี้</div>') +
     `<div class="legend"><span class="pchip k-on">ชื่อ<b>${fmtScore(S.scoring.on)}</b></span> ครบตรงเวลา <span class="pchip k-partial">ชื่อ<b>${fmtScore(S.scoring.partial)}</b></span> ไม่ครบ/ไม่ตามกำหนด <span class="pchip k-late">ชื่อ<b>${fmtScore(S.scoring.late)}</b></span> ล่าช้า <span class="pchip k-none">ชื่อ<b>${fmtScore(S.scoring.none)}</b></span> ไม่ส่ง <span class="pchip k-wait">ชื่อ<b>รอ</b></span> รอประเมิน · ${S.canEdit?"คลิกชื่อเพื่อให้คะแนน":"คลิกชื่อเพื่อดูรายละเอียด"}</div>`;
 }
 
@@ -723,8 +756,49 @@ document.addEventListener("submit", async e=>{
   }catch(err){ p.busy=false; renderPanel(); fail(err); }
 }, true);
 
+/* ---------- quick add task ---------- */
+const GENERAL="งานทั่วไป";
+function quickForm(){
+  if(!S.canEdit) return "";
+  const q=S.quick;
+  if(!q) return `<div style="margin-bottom:14px"><button type="button" class="btn pri" id="qOpen">+ เพิ่มงาน</button> <span class="mini">กรอกแค่ชื่องานก็บันทึกได้ ช่องอื่นไม่บังคับ</span></div>`;
+  const topics=[...new Set(S.tasks.map(topicOf))].sort((a,b)=>a.localeCompare(b,"th"));
+  const inds=sortedIndicators().filter(i=>groupOfInd(i)===q.group && i.name!==GENERAL);
+  const names=(q.assignees||[]).map(id=>shortName(staffById(id)?.name));
+  return `<form class="card" id="quickForm" style="margin-bottom:16px"><h3>เพิ่มงาน</h3>
+    <div class="qgrid">
+      <label class="field qwide"><span>ชื่องาน / หัวข้อ *</span><input type="text" id="qName" list="qTopics" value="${esc(q.name)}" placeholder="เช่น ตรวจสอบภายใน" required><datalist id="qTopics">${topics.map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label>
+      <label class="field"><span>กลุ่มงาน</span><select id="qGroup">${allGroups().map(g=>`<option ${g===q.group?"selected":""}>${esc(g)}</option>`).join("")}</select></label>
+      <label class="field"><span>ตัวชี้วัด (ไม่บังคับ)</span><input type="text" id="qInd" list="qInds" value="${esc(q.ind)}" placeholder="เลือกหรือพิมพ์ใหม่"><datalist id="qInds">${inds.map(i=>`<option value="${esc((i.code?i.code+" ":"")+i.name)}">`).join("")}</datalist></label>
+      <label class="field"><span>กำหนดส่ง (ไม่บังคับ)</span><input type="date" id="qDue" value="${esc(q.due)}"></label>
+      <div class="field"><span>ผู้รับผิดชอบ (ไม่บังคับ)</span><button type="button" class="btn" data-assign="quick" style="text-align:left;overflow:hidden;text-overflow:ellipsis">${names.length? names.length+" คน: "+esc(names.slice(0,3).join(", "))+(names.length>3?"…":"") : "+ เลือกคน"}</button></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><button type="submit" class="btn pri">บันทึกงาน</button><button type="button" class="btn" id="qClose">ปิด</button></div></form>`;
+}
+function quickCapture(){ const q=S.quick; if(!q) return; const v=id=>{ const el=document.getElementById(id); return el? el.value : undefined; };
+  if(v("qName")!==undefined){ q.name=v("qName"); q.group=v("qGroup"); q.ind=v("qInd"); q.due=v("qDue"); } }
+async function quickSave(){
+  quickCapture(); const q=S.quick; const name=(q.name||"").trim(); if(!name){ toast("ใส่ชื่องานก่อน"); return; }
+  const g=q.group||GROUPS_FIXED[0]; const indTxt=(q.ind||"").trim();
+  let ind = indTxt? S.indicators.find(i=>groupOfInd(i)===g && ((i.code?i.code+" ":"")+i.name===indTxt || i.name===indTxt || i.code===indTxt)) : S.indicators.find(i=>groupOfInd(i)===g && i.name===GENERAL);
+  let indId;
+  if(ind) indId=ind.id;
+  else { const m=indTxt.match(/^(\d+(?:\.\d+)*)\s+(.+)$/); indId=(await S.db.collection("indicators").add({fy:S.fy, group:g, code: indTxt? (m?m[1]:"") : "", name: indTxt? (m?m[2]:indTxt) : GENERAL, created:Date.now()})).id; }
+  await S.db.collection("tasks").add({fy:S.fy, indicatorId:indId, name, due:q.due||"", note:"", assignees:(q.assignees||[]).filter(id=>staffById(id)), results:{}, created:Date.now(), updated:Date.now()});
+  toast("บันทึกงาน “"+name+"” แล้ว"+((q.assignees||[]).length?"":" · คลิกช่องในตารางเพื่อมอบหมายคนภายหลังได้"));
+  S.quick={name:"", group:g, ind:q.ind, due:q.due, assignees:[]}; render(); setTimeout(()=>$("#qName")?.focus(),50);
+}
+document.addEventListener("click", e=>{ const t=e.target;
+  if(t.id==="qOpen"){ S.quick={name:"", group: S.group&&S.group!==UNGROUPED? S.group : GROUPS_FIXED[0], ind:"", due:"", assignees:[]}; render(); setTimeout(()=>$("#qName")?.focus(),50); }
+  if(t.id==="qClose"){ S.quick=null; render(); }
+  if(t.closest?.('[data-assign="quick"]')) quickCapture();
+});
+document.addEventListener("change", e=>{ if(e.target.id==="qGroup"){ quickCapture(); render(); } });
+document.addEventListener("submit", e=>{ if(e.target.id==="quickForm"){ e.preventDefault(); e.stopImmediatePropagation(); quickSave().catch(fail); } }, true);
+
 /* ---------- assign picker ---------- */
-function assignTarget(key){ if(key.startsWith("imp:")){ const [i,j]=key.slice(4).split(".").map(Number); return {imp:true, i, j, t:S.imp.items?.[i]?.tasks?.[j]}; }
+function assignTarget(key){ if(key==="quick") return {imp:true, t: S.quick? Object.assign(S.quick,{assignees:S.quick.assignees||[]}) : null};
+  if(key.startsWith("imp:")){ const [i,j]=key.slice(4).split(".").map(Number); return {imp:true, i, j, t:S.imp.items?.[i]?.tasks?.[j]}; }
   return {imp:false, tid:key, t:S.tasks.find(x=>x.id===key)}; }
 function assignList(a){
   const tg=assignTarget(a.key); const ids=(tg.t&&tg.t.assignees)||[]; const f=(a.q||"").trim();
@@ -755,7 +829,7 @@ function renderAssign(){
 }
 async function setAssignees(key, ids){
   const tg=assignTarget(key); if(!tg.t) return;
-  if(tg.imp){ tg.t.assignees=ids; render(); return; }
+  if(tg.imp){ tg.t.assignees=ids; if(key==="quick") quickCapture(); render(); return; }
   const prev=tg.t.assignees||[]; const removed=prev.filter(id=>!ids.includes(id) && (tg.t.results||{})[id]);
   const body={assignees:ids, updated:Date.now()}; if(removed.length){ body.results={}; removed.forEach(id=>body.results[id]=null); }
   tg.t.assignees=ids; render();
@@ -1132,16 +1206,19 @@ document.addEventListener("click", async e=>{
   // popover
   if(S.pop && t.closest(".pop")){
     const ps=t.closest("[data-pick-st]");
-    if(ps){ const k=ps.dataset.pickSt; const tk=S.tasks.find(x=>x.id===S.pop.tid); const cur=((tk.results||{})[S.pop.sid]||{});
-      const patch={status: cur.status===k && (tk.assignees||[]).includes(S.pop.sid) ? null : k};
-      if(patch.status && !cur.date) patch.date = new Date().toISOString().slice(0,10);
-      await writeCell(S.pop.tid,S.pop.sid,patch); return; }
-    if(t.id==="popAssign"){ await writeCell(S.pop.tid,S.pop.sid,null); return; }
-    if(t.id==="popClear"){ await writeCell(S.pop.tid,S.pop.sid,{status:null,date:"",note:""}); return; }
-    if(t.id==="popUnassign"){ const p=S.pop; S.pop=null; await writeCell(p.tid,p.sid,null,{unassign:true}); render(); return; }
+    if(ps){ const k=ps.dataset.pickSt, tid=ps.dataset.ptid; const tk=S.tasks.find(x=>x.id===tid); const cur=((tk.results||{})[S.pop.sid]||{});
+      const patch={status: cur.status===k ? null : k}; if(patch.status && !cur.date) patch.date=todayISO();
+      await writeCell(tid,S.pop.sid,patch); renderPop(); return; }
+    const pa=t.closest("[data-pact]");
+    if(pa){ const tid=pa.dataset.ptid, act=pa.dataset.pact;
+      if(act==="assign") await writeCell(tid,S.pop.sid,null);
+      if(act==="clear") await writeCell(tid,S.pop.sid,{status:null,date:"",note:""});
+      if(act==="unassign") await writeCell(tid,S.pop.sid,null,{unassign:true});
+      render(); return; }
     if(t.id==="popClose"){ S.pop=null; render(); return; }
   }
-  const cell=t.closest("[data-cell]"); if(cell){ S.assignPop=null; renderAssign(); const [tid,sid]=cell.dataset.cell.split("|"); S.pop = (S.pop&&S.pop.tid===tid&&S.pop.sid===sid)? null : {tid,sid};
+  const cell=t.closest("[data-cell]"); if(cell){ S.assignPop=null; renderAssign(); const v=cell.dataset.cell; const cut=v.lastIndexOf("|"); const key=v.slice(0,cut), sid=v.slice(cut+1);
+    S.pop = (S.pop&&S.pop.key===key&&S.pop.sid===sid)? null : {key,sid};
     document.querySelectorAll(".mx td.cell.sel").forEach(c=>c.classList.remove("sel")); if(S.pop) cell.classList.add("sel"); renderPop(); return; }
   if(S.pop && !t.closest(".pop")){ S.pop=null; document.querySelectorAll(".mx td.cell.sel").forEach(c=>c.classList.remove("sel")); renderPop(); }
   const so=t.closest("[data-sort]"); if(so){ const k=so.dataset.sort; S.sort = S.sort.k===k? {k,dir:-S.sort.dir} : {k,dir:(k==="name"||k==="order")?1:-1}; render(); return; }
@@ -1185,7 +1262,7 @@ document.addEventListener("change", async e=>{
   if(t.id==="posf"){ S.posFilter=t.value; render(); return; }
   if(t.id==="indGroup"){ $("#indOther").hidden = t.value!=="__other"; return; }
   if(t.id==="eGroup"){ $("#eOther").hidden = t.value!=="__other"; return; }
-  if(S.pop && (t.id==="popDate"||t.id==="popNote")){ await writeCell(S.pop.tid,S.pop.sid, t.id==="popDate"?{date:t.value}:{note:t.value}); return; }
+  if(S.pop && (t.classList.contains("popDate")||t.classList.contains("popNote"))){ await writeCell(t.dataset.ptid,S.pop.sid, t.classList.contains("popDate")?{date:t.value}:{note:t.value}); return; }
   const p=S.panel;
   if(p && p.type==="task"){
     if(t.dataset.pick){ captureTask(); const set=new Set(p.draft.assignees); t.checked?set.add(t.dataset.pick):set.delete(t.dataset.pick); p.draft.assignees=[...set]; renderPanel(); return; }
@@ -1215,9 +1292,9 @@ document.addEventListener("submit", async e=>{
     if(f.id==="groupForm"){ const g=$("#newGroup").value.trim(); if(!g) return;
       if(!allGroups().includes(g)) await S.db.doc("settings/groups").set({custom:[...S.customGroups,g]});
       S.addingGroup=false; S.group=g; render(); toast("เพิ่มกลุ่มงาน “"+g+"” แล้ว"); }
-    else if(f.id==="indForm"){ const code=$("#indCode").value.trim(), name=$("#indName").value.trim(); if(!code||!name) return;
+    else if(f.id==="indForm"){ const code=$("#indCode").value.trim(), name=$("#indName").value.trim(); if(!name){ toast("ใส่ชื่อตัวชี้วัดก่อน"); return; }
       const group=await resolveGroup("indGroup","indOther"); if(!group){ toast("ระบุชื่อกลุ่มงานก่อน"); return; }
-      await S.db.collection("indicators").add({fy:S.fy, group, code, name, created:Date.now()}); toast("เพิ่มตัวชี้วัด "+code+" ในกลุ่ม "+group+" แล้ว"); $("#indCode").value=""; $("#indName").value=""; }
+      await S.db.collection("indicators").add({fy:S.fy, group, code, name, created:Date.now()}); toast("เพิ่มตัวชี้วัด "+(code||name)+" ในกลุ่ม "+group+" แล้ว"); $("#indCode").value=""; $("#indName").value=""; }
     else if(f.id==="indEdit"){ const d=S.panel.draft; const group=await resolveGroup("eGroup","eOther"); if(!group){ toast("ระบุชื่อกลุ่มงานก่อน"); return; }
       await S.db.doc("indicators/"+d.id).update({group, code:$("#eCode").value.trim(), name:$("#eName").value.trim()}); closePanel(); toast("บันทึกแล้ว"); }
     else if(f.id==="taskForm"){ captureTask(); const p=S.panel, d=p.draft; if(!d.name.trim()){ toast("ใส่ชื่องานก่อนบันทึก"); return; }
@@ -1251,9 +1328,9 @@ function setFy(fy){
   unsubFy.forEach(u=>u()); unsubFy=[];
   if(!S.db){ render(); return; }
   let gotI=false, gotT=false;
-  unsubFy.push(S.db.collection("indicators").where("fy","==",fy).onSnapshot(s=>{ S.indicators=s.docs.map(d=>({id:d.id,...d.data()})); gotI=true; if(gotT) S.loaded.tasks=true; render(); }, fail));
+  unsubFy.push(S.db.collection("indicators").where("fy","==",fy).onSnapshot(s=>{ S.indicators=s.docs.map(d=>({id:d.id,...d.data()})); gotI=true; if(gotT) S.loaded.tasks=true; softRender(); }, fail));
   unsubFy.push(S.db.collection("tasks").where("fy","==",fy).onSnapshot(s=>{ S.tasks=s.docs.map(d=>({id:d.id,...d.data()})); gotT=true; if(gotI) S.loaded.tasks=true;
-    const p=S.panel; if(p&&p.type==="task"&&!p.isNew&&!S.tasks.some(t=>t.id===p.id)) S.panel=null; render(); }, fail));
+    const p=S.panel; if(p&&p.type==="task"&&!p.isNew&&!S.tasks.some(t=>t.id===p.id)) S.panel=null; softRender(); }, fail));
   render();
 }
 document.addEventListener("submit", async e=>{
@@ -1270,12 +1347,12 @@ async function start(){
   const db=NFE.db; S.db=db; S.sample=null; S.sampleCaps=null;
   window.onDbWriteError = fail;
   NFE.checkAdmin().then(ok=>{ S.isAdmin=ok; S.assets= ok? {upload:NFE.upload} : null; render(); });
-  const _l={fire:()=>render()}; NFE.store.listeners.add(_l);
+  const _l={fire:()=>softRender()}; NFE.store.listeners.add(_l);
   NFE.start();
-  db.collection("staff").onSnapshot(s=>{ S.staff=s.docs.map(d=>({id:d.id,...d.data()})); S.loaded.staff=true; render(); }, fail);
-  db.collection("years").onSnapshot(s=>{ S.years=s.docs.map(d=>({id:d.id,...d.data()})); render(); }, fail);
-  db.doc("settings/scoring").onSnapshot(s=>{ S.scoring = s.exists? {...DEFAULT_SCORE,...s.data()} : {...DEFAULT_SCORE}; render(); }, fail);
-  db.doc("settings/groups").onSnapshot(s=>{ S.customGroups = (s.exists && Array.isArray(s.data().custom))? s.data().custom.map(String) : []; render(); }, fail);
+  db.collection("staff").onSnapshot(s=>{ S.staff=s.docs.map(d=>({id:d.id,...d.data()})); S.loaded.staff=true; softRender(); }, fail);
+  db.collection("years").onSnapshot(s=>{ S.years=s.docs.map(d=>({id:d.id,...d.data()})); softRender(); }, fail);
+  db.doc("settings/scoring").onSnapshot(s=>{ S.scoring = s.exists? {...DEFAULT_SCORE,...s.data()} : {...DEFAULT_SCORE}; softRender(); }, fail);
+  db.doc("settings/groups").onSnapshot(s=>{ S.customGroups = (s.exists && Array.isArray(s.data().custom))? s.data().custom.map(String) : []; softRender(); }, fail);
   setFy(fy);
 }
 render(); start();
