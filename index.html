@@ -851,13 +851,18 @@ function quickForm(){
 }
 function quickCapture(){ const q=S.quick; if(!q) return; const v=id=>{ const el=document.getElementById(id); return el? el.value : undefined; };
   if(v("qName")!==undefined){ q.name=v("qName"); q.group=v("qGroup"); q.ind=v("qInd"); q.due=v("qDue"); } }
+const indLabel = i => !i || i.name===GENERAL ? "" : [i.code, i.name].filter(Boolean).join(" ");
+/* find an indicator in group g by the text typed (code, name or "code name"); blank = the group's general bucket; unknown text = new indicator */
+async function resolveInd(g, txt){
+  const t=String(txt||"").trim().replace(/\s+/g," ");
+  const ind = t? S.indicators.find(i=>groupOfInd(i)===g && (indLabel(i)===t || i.name===t || (i.code && i.code===t))) : S.indicators.find(i=>groupOfInd(i)===g && i.name===GENERAL);
+  if(ind) return ind.id;
+  const m=t.match(/^(\d[\d./\-]*)\s+(.+)$/);
+  return (await S.db.collection("indicators").add({fy:S.fy, group:g, code: t? (m?m[1]:"") : "", name: t? (m?m[2]:t) : GENERAL, created:Date.now()})).id;
+}
 async function quickSave(){
   quickCapture(); const q=S.quick; const name=(q.name||"").trim(); if(!name){ toast("ใส่ชื่องานก่อน"); return; }
-  const g=q.group||GROUPS_FIXED[0]; const indTxt=(q.ind||"").trim();
-  let ind = indTxt? S.indicators.find(i=>groupOfInd(i)===g && ((i.code?i.code+" ":"")+i.name===indTxt || i.name===indTxt || i.code===indTxt)) : S.indicators.find(i=>groupOfInd(i)===g && i.name===GENERAL);
-  let indId;
-  if(ind) indId=ind.id;
-  else { const m=indTxt.match(/^(\d+(?:\.\d+)*)\s+(.+)$/); indId=(await S.db.collection("indicators").add({fy:S.fy, group:g, code: indTxt? (m?m[1]:"") : "", name: indTxt? (m?m[2]:indTxt) : GENERAL, created:Date.now()})).id; }
+  const g=q.group||GROUPS_FIXED[0]; const indId=await resolveInd(g, q.ind);
   await S.db.collection("tasks").add({fy:S.fy, indicatorId:indId, name, due:q.due||"", note:"", assignees:(q.assignees||[]).filter(id=>staffById(id)), results:{}, created:Date.now(), updated:Date.now()});
   toast("บันทึกงาน “"+name+"” แล้ว"+((q.assignees||[]).length?"":" · คลิกช่องในตารางเพื่อมอบหมายคนภายหลังได้"));
   S.quick={name:"", group:g, ind:q.ind, due:q.due, assignees:[]}; render(); setTimeout(()=>$("#qName")?.focus(),50);
@@ -867,7 +872,7 @@ document.addEventListener("click", e=>{ const t=e.target;
   if(t.id==="qClose"){ S.quick=null; render(); }
   if(t.closest?.('[data-assign="quick"]')) quickCapture();
 });
-document.addEventListener("change", e=>{ if(e.target.id==="qGroup"){ quickCapture(); render(); } });
+document.addEventListener("change", e=>{ if(e.target.id==="qGroup"){ quickCapture(); render(); } if(e.target.id==="tGroup" && S.panel){ captureTask(); renderPanel(); } });
 document.addEventListener("submit", e=>{ if(e.target.id==="quickForm"){ e.preventDefault(); e.stopImmediatePropagation(); quickSave().catch(fail); } }, true);
 
 /* ---------- assign picker ---------- */
@@ -1206,6 +1211,7 @@ function renderPanel(){
 }
 function panelTask(p){
   const d=p.draft; const ro = !S.canEdit;
+  if(d.group===undefined){ const i0=indById(d.indicatorId); d.group = i0? groupOfInd(i0) : (S.group&&S.group!==UNGROUPED? S.group : GROUPS_FIXED[0]); d.indTxt = indLabel(i0); }
   const inds=sortedIndicators();
   const groups={}; S.staff.filter(s=>s.active!==false).concat(S.staff.filter(s=>s.active===false && d.assignees.includes(s.id)))
     .sort((a,b)=>(a.order||0)-(b.order||0)).forEach(s=>{ const g=s.position||"ไม่ระบุตำแหน่ง"; (groups[g]=groups[g]||[]).push(s); });
@@ -1226,7 +1232,10 @@ function panelTask(p){
   return `<form id="taskForm">
     <label class="field"><span>ชื่องาน</span><input type="text" id="tName" value="${esc(d.name)}" required ${ro?"disabled":""}></label>
     <div class="grid2" style="gap:12px">
-      <label class="field"><span>ตัวชี้วัดย่อย</span><select id="tInd" ${ro?"disabled":""}>${inds.map(i=>`<option value="${esc(i.id)}" ${i.id===d.indicatorId?"selected":""}>[${esc(groupOfInd(i))}] ${esc(i.code)} ${esc(i.name)}</option>`).join("")}</select></label>
+      <label class="field"><span>กลุ่มงาน</span><select id="tGroup" ${ro?"disabled":""}>${[...new Set([...allGroups(), d.group])].map(g=>`<option ${g===d.group?"selected":""}>${esc(g)}</option>`).join("")}</select></label>
+      <label class="field"><span>ตัวชี้วัดย่อย (ไม่บังคับ)</span><input type="text" id="tIndTxt" list="tIndList" value="${esc(d.indTxt)}" placeholder="เลือกจากรายการ หรือพิมพ์ใหม่ เว้นว่างได้" ${ro?"disabled":""}>
+        <datalist id="tIndList">${inds.filter(i=>groupOfInd(i)===d.group && i.name!==GENERAL).map(i=>`<option value="${esc(indLabel(i))}">`).join("")}</datalist>
+        ${!ro&&indById(d.indicatorId)&&indById(d.indicatorId).name!==GENERAL?`<button type="button" class="btn sm ghost" data-editind="${esc(d.indicatorId)}" style="justify-self:start;padding-left:0">แก้ไขรหัส/ชื่อของตัวชี้วัดนี้ (มีผลกับทุกงานในตัวชี้วัด)</button>`:""}</label>
       <label class="field"><span>กำหนดส่ง</span><input type="date" id="tDue" value="${esc(d.due||"")}" ${ro?"disabled":""}></label>
     </div>
     <label class="field"><span>รายละเอียด / คำสั่งที่ (ถ้ามี)</span><textarea id="tNote" rows="2" ${ro?"disabled":""}>${esc(d.note||"")}</textarea></label>
@@ -1376,7 +1385,7 @@ document.addEventListener("input", e=>{
 });
 function captureTask(){ const p=S.panel; if(!p||p.type!=="task"||!S.canEdit) return; const d=p.draft;
   const v=id=>{const el=document.getElementById(id); return el?el.value:undefined;};
-  if(v("tName")!==undefined){ d.name=v("tName"); d.indicatorId=v("tInd")||d.indicatorId; d.due=v("tDue"); d.note=v("tNote"); }
+  if(v("tName")!==undefined){ d.name=v("tName"); if(v("tGroup")!==undefined){ d.group=v("tGroup"); d.indTxt=v("tIndTxt"); } d.due=v("tDue"); d.note=v("tNote"); }
   document.querySelectorAll("[data-rdate]").forEach(el=>{ const r=d.results[el.dataset.rdate]=d.results[el.dataset.rdate]||{}; r.date=el.value; });
   document.querySelectorAll("[data-rnote]").forEach(el=>{ const r=d.results[el.dataset.rnote]=d.results[el.dataset.rnote]||{}; r.note=el.value; });
 }
@@ -1399,7 +1408,8 @@ document.addEventListener("submit", async e=>{
       await S.db.doc("indicators/"+d.id).update({group, code:$("#eCode").value.trim(), name:$("#eName").value.trim()}); closePanel(); toast("บันทึกแล้ว"); }
     else if(f.id==="taskForm"){ captureTask(); const p=S.panel, d=p.draft; if(!d.name.trim()){ toast("ใส่ชื่องานก่อนบันทึก"); return; }
       const results={}; d.assignees.forEach(id=>{ const r=d.results[id]; if(r&&(r.status||r.date||r.note)) results[id]={status:r.status||null,date:r.date||"",note:r.note||""}; });
-      const body={fy:d.fy||S.fy, indicatorId:d.indicatorId, name:d.name.trim(), due:d.due||"", note:d.note||"", assignees:d.assignees, results, updated:Date.now(), created:d.created||Date.now()};
+      const indId = await resolveInd(d.group||GROUPS_FIXED[0], d.indTxt);
+      const body={fy:d.fy||S.fy, indicatorId:indId, name:d.name.trim(), due:d.due||"", note:d.note||"", assignees:d.assignees, results, updated:Date.now(), created:d.created||Date.now()};
       const ref = p.isNew? S.db.collection("tasks").doc() : S.db.doc("tasks/"+p.id);
       await ref.set(body); closePanel(); toast((p.isNew?"เพิ่มงานแล้ว":"บันทึกแล้ว")+(d.assignees.length?"":" · ยังไม่ได้เลือกผู้รับผิดชอบ")); }
     else if(f.id==="staffForm"){ const p=S.panel; const unit=$("#sUnit").checked; const body={name:$("#sName").value.trim(), position:$("#sPos").value.trim()||(unit?UNIT_POS:""), kind: unit?"unit":"", order:Number($("#sOrder").value)||0, active:$("#sActive").checked};
