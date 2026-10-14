@@ -52,7 +52,7 @@
     flushing = true;
     try {
       const j = await post({ action: "batch", pass: LS.get("nfe_admin"), ops });
-      if (!j.ok) throw { code: j.code === "auth" ? "invalid_argument" : "unavailable", message: j.message || "บันทึกไม่สำเร็จ" };
+      if (!j.ok) throw { code: j.code === "auth" ? "invalid_argument" : (j.code === "scored" || j.code === "denied") ? j.code : "unavailable", message: j.message || "บันทึกไม่สำเร็จ" };
       ws.forEach(w => w.res());
     } catch (e) {
       const err = e && e.code ? e : { code: "unavailable", message: String(e) };

@@ -347,7 +347,7 @@ const fmtScore = n => n<0 ? "−"+fmt(-n) : fmt(n);
 const thDate = d => { if(!d) return "—"; const x=new Date(d+"T00:00:00"); return isNaN(x)?d:x.toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"}); };
 const currentFY = () => { const d=new Date(); return String((d.getMonth()>=9? d.getFullYear()+1 : d.getFullYear())+543); };
 function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2400); }
-function fail(e){ console.error(e); const c=e&&e.code; toast(c==="quota_exceeded"?"ฐานข้อมูลเต็ม: ลบงานเก่าที่ไม่ใช้ก่อน":c==="invalid_argument"?"บันทึกไม่ได้: บัญชีนี้ไม่มีสิทธิ์แก้ไข":"บันทึกไม่สำเร็จ ลองอีกครั้ง"); }
+function fail(e){ console.error(e); const c=e&&e.code; if(c==="scored"||c==="denied"){ toast(e.message); return; } toast(c==="quota_exceeded"?"ฐานข้อมูลเต็ม: ลบงานเก่าที่ไม่ใช้ก่อน":c==="invalid_argument"?"บันทึกไม่ได้: ต้องเข้าสู่ระบบผู้ดูแล":"บันทึกไม่สำเร็จ ลองอีกครั้ง"); }
 const staffById = id => S.staff.find(s=>s.id===id);
 const activeStaff = () => S.staff.filter(s=>s.active!==false);
 const indById = id => S.indicators.find(i=>i.id===id);
@@ -368,7 +368,7 @@ function topicsOf(tasks){ const m=new Map(); sortTasks(tasks).forEach(t=>{ const
 function popTasks(key){ if(key.startsWith("t:")){ const t=S.tasks.find(x=>x.id===key.slice(2)); return t?[t]:[]; } const name=key.slice(2); return sortTasks(visTasks()).filter(t=>topicOf(t)===name); }
 function aggPill(list, sid){
   const mine=list.filter(t=>(t.assignees||[]).includes(sid));
-  if(!mine.length) return S.canEdit? '<span class="plus" aria-hidden="true">+</span>' : "";
+  if(!mine.length) return '<span class="plus" aria-hidden="true">+</span>';
   if(mine.length===1) return pillFor(mine[0], sid);
   const ks=mine.map(t=>((t.results||{})[sid]||{}).status||null); const sum=ks.reduce((a,k)=>a+(k?scoreOf(k):0),0);
   const cls = ks.includes("none")?"p-none": ks.includes(null)?"p-wait": ks.every(k=>k==="on")?"p-on": ks.includes("partial")?"p-partial":"p-late";
@@ -474,7 +474,7 @@ function renderRole(){
   el.innerHTML = S.isAdmin
     ? (S.viewAsUser? `<span class="badge">มุมมองผู้ใช้ทั่วไป</span><button type="button" id="roleToggle">กลับเป็นผู้ดูแล</button>`
                    : `<span class="badge admin">ผู้ดูแลระบบ</span><button type="button" id="roleToggle">ดูแบบผู้ใช้ทั่วไป</button><button type="button" id="logout">ออกจากระบบ</button>`)
-    : `<span class="badge">ผู้ใช้ทั่วไป · ดูอย่างเดียว</span><button type="button" id="loginBtn">เข้าสู่ระบบผู้ดูแล</button>`;
+    : `<span class="badge">ผู้ใช้ทั่วไป</span><button type="button" id="loginBtn">เข้าสู่ระบบผู้ดูแล</button>`;
 }
 function renderFySelect(){
   const sel=$("#fy"); const ys = new Set(S.years.map(y=>y.id)); ys.add(S.fy);
@@ -548,10 +548,11 @@ function renderPop(){
   const row = t => { const i=indById(t.indicatorId); const as=(t.assignees||[]).includes(s.id); const r=(t.results||{})[s.id]||{};
     const late = (r.date && t.due && r.date>t.due) ? Math.round((new Date(r.date)-new Date(t.due))/864e5) : 0;
     const meta = `${i&&i.name?esc((i.code?i.code+" ":"")+i.name)+" · ":""}กำหนดส่ง ${thDate(t.due)} · ${(t.assignees||[]).length} คน`;
-    if(!as) return ro? "" : `<div class="prow"><div class="pmeta" style="margin:0">${list.length>1&&t.name.trim()!==topicOf(t)?`<b style="color:var(--ink)">${esc(t.name)}</b><br>`:""}${meta}</div>
+    if(!as) return `<div class="prow"><div class="pmeta" style="margin:0">${list.length>1&&t.name.trim()!==topicOf(t)?`<b style="color:var(--ink)">${esc(t.name)}</b><br>`:""}${meta}</div>
       <div class="pact"><button type="button" class="btn sm pri" data-pact="assign" data-ptid="${esc(t.id)}">มอบหมายงานนี้</button></div></div>`;
     return `<div class="prow mine"><div class="pmeta" style="margin:0 0 6px">${list.length>1&&t.name.trim()!==topicOf(t)?`<b style="color:var(--ink)">${esc(t.name)}</b><br>`:""}${meta}</div>
-      ${ro? `<div class="mini">ผล: ${r.status?`<span class="st st-${r.status}">${STATUS.find(x=>x.k===r.status).label}</span> (${fmtScore(scoreOf(r.status))})`:"รอประเมิน"}${r.date?" · ส่ง "+thDate(r.date):""}</div>`
+      ${ro? `<div class="mini">ผล: ${r.status?`<span class="st st-${r.status}">${STATUS.find(x=>x.k===r.status).label}</span> (${fmtScore(scoreOf(r.status))})`:"รอประเมิน (ผู้ดูแลเป็นผู้ให้คะแนน)"}${r.date?" · ส่ง "+thDate(r.date):""}</div>
+        ${r.status?"":`<div class="pact"><button type="button" class="btn sm danger" data-pact="unassign" data-ptid="${esc(t.id)}">ยกเลิกการรับผิดชอบ</button></div>`}`
       : `<div class="choices">${STATUS.map(x=>`<button type="button" class="choice ${x.k}" data-pick-st="${x.k}" data-ptid="${esc(t.id)}" aria-pressed="${r.status===x.k}"><span class="sc pill p-${x.k}">${fmtScore(S.scoring[x.k])}</span><span class="lb">${SHORT[x.k]}</span></button>`).join("")}</div>
         <div class="pfields"><label>วันที่ส่ง</label><span><input type="date" class="popDate" data-ptid="${esc(t.id)}" value="${esc(r.date||"")}" aria-label="วันที่ส่ง"> ${late>0?`<span class="hint">ช้า ${late} วัน</span>`:""}</span>
           <label>หมายเหตุ</label><input type="text" class="popNote" data-ptid="${esc(t.id)}" value="${esc(r.note||"")}" aria-label="หมายเหตุ"></div>
@@ -561,7 +562,7 @@ function renderPop(){
     <div class="pwho">${mine.length?`รับผิดชอบ ${mine.length} รายการ`:"ยังไม่ได้มอบหมาย"} · <b>${esc(s.name)}</b></div>
     <div class="ptitle">${esc(title)}</div>
     ${!mine.length && !ro && list.length===1? `<p class="mini" style="margin:4px 0 0">กดมอบหมาย แล้วเลือกคะแนนได้ทันที</p>`:""}
-    <div class="plist">${mine.map(row).join("")}${others.length&&!ro? (mine.length?`<div class="mini" style="margin:10px 0 4px">รายการอื่นในหัวข้อนี้ที่ยังไม่ได้รับ</div>`:"")+others.map(row).join(""):""}</div>
+    <div class="plist">${mine.map(row).join("")}${others.length? (mine.length?`<div class="mini" style="margin:10px 0 4px">รายการอื่นในหัวข้อนี้ที่ยังไม่ได้รับ</div>`:"")+others.map(row).join(""):""}</div>
     <div class="pfoot" style="margin-top:10px;justify-content:flex-end"><button type="button" class="btn sm" id="popClose">ปิด</button></div>
   </div>`;
   const pop=L.firstElementChild; const cell=document.querySelector(`[data-cell="${CSS.escape(p.key+"|"+p.sid)}"]`);
@@ -574,9 +575,9 @@ async function writeCell(tid,sid,patch,opts={}){
   const t=S.tasks.find(x=>x.id===tid); if(!t) return;
   let assignees=[...(t.assignees||[])];
   const body={updated:Date.now()};
-  if(opts.unassign){ assignees=assignees.filter(x=>x!==sid); body.assignees=assignees; body.results={[sid]:null}; }
+  if(opts.unassign){ assignees=assignees.filter(x=>x!==sid); body.assignees=assignees; if(S.canEdit) body.results={[sid]:null}; }
   else { if(!assignees.includes(sid)){ assignees.push(sid); body.assignees=assignees; }
-    if(patch) body.results={[sid]:{status:null,date:"",note:"",...((t.results||{})[sid]||{}),...patch}}; }
+    if(patch && S.canEdit) body.results={[sid]:{status:null,date:"",note:"",...((t.results||{})[sid]||{}),...patch}}; }
   const p=S.db.doc("tasks/"+tid).update(body);
   const loc=S.tasks.find(x=>x.id===tid); if(loc){ if(body.assignees) loc.assignees=body.assignees; if(body.results){ loc.results={...(loc.results||{})}; for(const k in body.results) loc.results[k]=body.results[k]; } }
   try{ await p; }catch(err){ fail(err); }
@@ -653,7 +654,7 @@ function viewTasks(){
   const addForm = `<div class="card edit-only" style="margin-bottom:8px"><h3>เพิ่มตัวชี้วัดย่อย</h3>
     <form class="form" id="indForm">${groupSelect("indGroup",defGroup)}<input type="text" id="indOther" placeholder="ระบุชื่อกลุ่มงาน" hidden>
     <input type="text" id="indCode" placeholder="รหัส (ไม่บังคับ)" style="flex:0 1 130px">
-    <input type="text" id="indName" placeholder="ชื่อตัวชี้วัดย่อย" required><button class="btn pri" type="submit">เพิ่ม</button></form>
+    <input type="text" id="indName" placeholder="ชื่อตัวชี้วัดย่อย (ไม่บังคับ)"><button class="btn pri" type="submit">เพิ่ม</button></form>
     ${S.indicators.length===0?`<p class="mini" style="margin:10px 0 0">หรือ <button class="btn sm" type="button" id="copyInd">คัดลอกตัวชี้วัดจากปีงบประมาณ ${esc(prevFy)}</button> (เฉพาะชื่อตัวชี้วัดและกลุ่มงาน ไม่คัดลอกงาน)</p>`:""}</div>`;
   const all = visTasks(); const cnt={unassigned:0,incomplete:0,done:0}; all.forEach(t=>cnt[taskProg(t).state]++);
   const fchip=(k,l,n)=>`<button type="button" class="gchip" data-tfilter="${k}" aria-pressed="${S.taskFilter===k}">${l} <span class="n">${n}</span></button>`;
@@ -671,9 +672,9 @@ function viewTasks(){
     return `<div class="task2"><div class="t-top"><div class="t-main" data-task="${esc(t.id)}" tabindex="0"><div class="tn">${esc(t.name)}</div>
         <div class="tm">กำหนดส่ง ${thDate(t.due)}${p.n?` · ผู้รับผิดชอบ ${p.n} คน · ส่งแล้ว ${p.sub}/${p.n}`:""}</div></div>${badge}</div>
       ${p.n?`<div class="prog" aria-hidden="true"><span style="width:${p.sub/p.n*100}%"></span></div>`:""}
-      <div class="people">${people}${S.canEdit?`<button type="button" class="btn sm ${p.n?"ghost":"pri"}" data-assign="${esc(t.id)}">${p.n?"+ เพิ่ม/แก้ไขผู้รับผิดชอบ":"+ เลือกผู้รับผิดชอบ"}</button>`:""}</div></div>`; };
+      <div class="people">${people}${S.db?`<button type="button" class="btn sm ${p.n?"ghost":"pri"}" data-assign="${esc(t.id)}">${p.n?"+ เพิ่ม/แก้ไขผู้รับผิดชอบ":"+ เลือกผู้รับผิดชอบ"}</button>`:""}</div></div>`; };
   const block = (ind, list) => `<section class="ind">
-    <div class="ind-h">${ind?`<span class="code">${esc(ind.code)}</span>`:""}<h3>${ind?esc(ind.name):"งานที่ไม่ได้อยู่ในตัวชี้วัด"}</h3>
+    <div class="ind-h">${ind?`<span class="code">${esc(ind.code)}</span>`:""}<h3>${ind? (ind.name? esc(ind.name) : '<span class="mini">ไม่ระบุชื่อตัวชี้วัด</span>') :"งานที่ไม่ได้อยู่ในตัวชี้วัด"}</h3>
       <span class="meta">${list.length} งาน</span>
       ${ind?`<button class="btn sm" data-docs="${esc(ind.id)}" type="button">เอกสาร/ต้นเรื่อง${(ind.docs||[]).length?` (${ind.docs.length})`:""}</button>
       <button class="btn sm pri edit-only" data-newtask="${esc(ind.id)}" type="button">+ เพิ่มงาน</button>
@@ -686,7 +687,7 @@ function viewTasks(){
       if(!list.length && !extra) return "";
       return `<div class="ghead">${esc(g)}</div>` + list.map(i=>block(i, tasksOf(i.id))).join("") + (extra? block(null, orphan):""); }).join("");
   return quickForm() + addForm + head + (body || '<div class="notice">ไม่มีงานตามตัวกรองนี้</div>') +
-    `<div class="legend"><span class="pchip k-on">ชื่อ<b>${fmtScore(S.scoring.on)}</b></span> ครบตรงเวลา <span class="pchip k-partial">ชื่อ<b>${fmtScore(S.scoring.partial)}</b></span> ไม่ครบ/ไม่ตามกำหนด <span class="pchip k-late">ชื่อ<b>${fmtScore(S.scoring.late)}</b></span> ล่าช้า <span class="pchip k-none">ชื่อ<b>${fmtScore(S.scoring.none)}</b></span> ไม่ส่ง <span class="pchip k-wait">ชื่อ<b>รอ</b></span> รอประเมิน · ${S.canEdit?"คลิกชื่อเพื่อให้คะแนน":"คลิกชื่อเพื่อดูรายละเอียด"}</div>`;
+    `<div class="legend"><span class="pchip k-on">ชื่อ<b>${fmtScore(S.scoring.on)}</b></span> ครบตรงเวลา <span class="pchip k-partial">ชื่อ<b>${fmtScore(S.scoring.partial)}</b></span> ไม่ครบ/ไม่ตามกำหนด <span class="pchip k-late">ชื่อ<b>${fmtScore(S.scoring.late)}</b></span> ล่าช้า <span class="pchip k-none">ชื่อ<b>${fmtScore(S.scoring.none)}</b></span> ไม่ส่ง <span class="pchip k-wait">ชื่อ<b>รอ</b></span> รอประเมิน · ${S.canEdit?"คลิกชื่อเพื่อให้คะแนน":"ทุกคนเลือกผู้รับผิดชอบได้ · คะแนนให้โดยผู้ดูแลระบบ"}</div>`;
 }
 
 /* ---------- indicator documents ---------- */
@@ -807,7 +808,7 @@ function assignList(a){
   const html = Object.entries(groups).map(([g,list])=>{ const shown=list.filter(s=>!f||s.name.includes(f)); if(!shown.length) return "";
     const all=shown.every(s=>ids.includes(s.id));
     return `<div class="pgrp"><span>${esc(g)} (${shown.length})</span><button type="button" class="btn sm ghost" data-agrp="${esc(g)}" data-all="${all?0:1}">${all?"ยกเลิกทั้งกลุ่ม":"เลือกทั้งกลุ่ม"}</button></div>`+
-      shown.map(s=>`<label class="pitem"><input type="checkbox" data-acheck="${esc(s.id)}" ${ids.includes(s.id)?"checked":""}> ${esc(s.name)}</label>`).join(""); }).join("");
+      shown.map(s=>{ const locked=!S.canEdit && !tg.imp && ids.includes(s.id) && (((tg.t.results||{})[s.id]||{}).status); return `<label class="pitem"><input type="checkbox" data-acheck="${esc(s.id)}" ${ids.includes(s.id)?"checked":""} ${locked?"disabled":""}> ${esc(s.name)}${locked?' <span class="mini">(ให้คะแนนแล้ว)</span>':""}</label>`; }).join(""); }).join("");
   return html || '<div class="empty">ไม่พบรายชื่อ</div>';
 }
 function renderAssign(){
@@ -831,7 +832,8 @@ async function setAssignees(key, ids){
   const tg=assignTarget(key); if(!tg.t) return;
   if(tg.imp){ tg.t.assignees=ids; if(key==="quick") quickCapture(); render(); return; }
   const prev=tg.t.assignees||[]; const removed=prev.filter(id=>!ids.includes(id) && (tg.t.results||{})[id]);
-  const body={assignees:ids, updated:Date.now()}; if(removed.length){ body.results={}; removed.forEach(id=>body.results[id]=null); }
+  if(!S.canEdit && removed.some(id=>((tg.t.results||{})[id]||{}).status)){ toast("คนที่ให้คะแนนแล้ว ยกเลิกได้เฉพาะผู้ดูแล"); render(); return; }
+  const body={assignees:ids, updated:Date.now()}; if(removed.length && S.canEdit){ body.results={}; removed.forEach(id=>body.results[id]=null); }
   tg.t.assignees=ids; render();
   try{ await S.db.doc("tasks/"+tg.tid).update(body); }catch(err){ fail(err); }
 }
@@ -843,7 +845,7 @@ document.addEventListener("click", e=>{
   if(!t.closest(".apop")){ S.assignPop=null; renderAssign(); return; }
   if(t.id==="assDone"){ S.assignPop=null; renderAssign(); return; }
   const g=t.closest("[data-agrp]"); if(g){ const tg=assignTarget(a.key); const set=new Set(tg.t.assignees||[]);
-    S.staff.filter(s=>(s.position||"ไม่ระบุตำแหน่ง")===g.dataset.agrp && s.active!==false && (!a.q||s.name.includes(a.q))).forEach(s=> g.dataset.all==="1"? set.add(s.id) : set.delete(s.id));
+    S.staff.filter(s=>(s.position||"ไม่ระบุตำแหน่ง")===g.dataset.agrp && s.active!==false && (!a.q||s.name.includes(a.q))).forEach(s=>{ const locked=!S.canEdit && !tg.imp && (((tg.t.results||{})[s.id]||{}).status); if(g.dataset.all==="1") set.add(s.id); else if(!locked) set.delete(s.id); });
     setAssignees(a.key,[...set]); }
 }, true);
 document.addEventListener("change", e=>{ const t=e.target; if(!S.assignPop || t.dataset.acheck==null) return;
@@ -869,7 +871,7 @@ function viewStaff(){
       <p class="mini" style="margin:0 0 8px">ทุกคนที่มีลิงก์เว็บไซต์ดูได้ ผู้ดูแลต้องเข้าสู่ระบบด้วยรหัส</p>
       <div class="tablebox"><table class="std"><tbody>
         <tr><td><span class="chip c-high">ผู้ดูแลระบบ</span></td><td>กด <b>“เข้าสู่ระบบผู้ดูแล”</b> แล้วใส่รหัส (ADMIN_PASSWORD) เช่น ผู้บริหาร ฝ่ายบุคคล · เพิ่ม/แก้ไขงาน นำเข้าไฟล์ มอบหมายงาน ให้คะแนน</td></tr>
-        <tr><td><span class="chip c-low">ผู้ใช้ทั่วไป</span></td><td>เปิดลิงก์เว็บไซต์ได้เลย เช่น ครูทุกคน · ดูตารางคะแนนและรายงาน แก้ไขไม่ได้ (ถ้าต้องการจำกัดคนดู ตั้ง VIEW_PASSWORD ใน Apps Script)</td></tr>
+        <tr><td><span class="chip c-low">ผู้ใช้ทั่วไป</span></td><td>เปิดลิงก์เว็บไซต์ได้เลย เช่น ครูทุกคน · ดูตารางคะแนนและรายงาน และเลือกผู้รับผิดชอบงานได้ แต่ให้คะแนนไม่ได้ (ถ้าต้องการจำกัดคนดู ตั้ง VIEW_PASSWORD ใน Apps Script)</td></tr>
       </tbody></table></div>
       <p class="mini" style="margin:8px 0 0">กด “ดูแบบผู้ใช้ทั่วไป” ที่แถบด้านบน เพื่อดูว่าครูจะเห็นหน้าจออย่างไร</p></div>
     <div class="card"><h3>เกณฑ์การให้คะแนน</h3>
@@ -1022,7 +1024,7 @@ function parseLocal(text, defGroup){
   return items;
 }
 async function doImport(){
-  const items=S.imp.items.filter(x=>x.include && x.name.trim()); if(!items.length) return;
+  const items=S.imp.items.filter(x=>x.include && (x.name.trim()||x.code.trim()||x.tasks.some(t=>t.name.trim()))); if(!items.length) return;
   setImp({busy:true, err:false, status:"กำลังนำเข้า…"});
   try{
     const newGroups=[...new Set(items.map(x=>x.group.trim()).filter(g=>g && !allGroups().includes(g)))];
@@ -1184,8 +1186,8 @@ function panelStaff(p){ const d=p.draft;
 function panelInd(p){ const d=p.draft; const n=S.tasks.filter(t=>t.indicatorId===d.id).length;
   return `<form id="indEdit">
    <label class="field"><span>กลุ่มงาน</span>${groupSelect("eGroup", d.group||GROUPS_FIXED[0])}<input type="text" id="eOther" placeholder="ระบุชื่อกลุ่มงาน" hidden style="margin-top:6px"></label>
-   <label class="field"><span>รหัส</span><input type="text" id="eCode" value="${esc(d.code)}" required></label>
-   <label class="field"><span>ชื่อตัวชี้วัดย่อย</span><textarea id="eName" rows="2" required>${esc(d.name)}</textarea></label>
+   <label class="field"><span>รหัส</span><input type="text" id="eCode" value="${esc(d.code)}"></label>
+   <label class="field"><span>ชื่อตัวชี้วัดย่อย</span><textarea id="eName" rows="2">${esc(d.name)}</textarea></label>
    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between"><button class="btn pri" type="submit">บันทึก</button>
    <button type="button" class="btn danger ${S.armed==="ind"?"armed":""}" id="delInd" ${n?"disabled":""}>${n?`ลบไม่ได้ (มี ${n} งาน)`:S.armed==="ind"?"กดอีกครั้งเพื่อยืนยันลบ":"ลบตัวชี้วัด"}</button></div></form>`; }
 
@@ -1206,11 +1208,14 @@ document.addEventListener("click", async e=>{
   // popover
   if(S.pop && t.closest(".pop")){
     const ps=t.closest("[data-pick-st]");
+    if(ps && !S.canEdit) return;
     if(ps){ const k=ps.dataset.pickSt, tid=ps.dataset.ptid; const tk=S.tasks.find(x=>x.id===tid); const cur=((tk.results||{})[S.pop.sid]||{});
       const patch={status: cur.status===k ? null : k}; if(patch.status && !cur.date) patch.date=todayISO();
       await writeCell(tid,S.pop.sid,patch); renderPop(); return; }
     const pa=t.closest("[data-pact]");
     if(pa){ const tid=pa.dataset.ptid, act=pa.dataset.pact;
+      if(!S.canEdit && act==="unassign"){ const tk=S.tasks.find(x=>x.id===tid); if(((tk.results||{})[S.pop.sid]||{}).status){ toast("งานนี้ให้คะแนนแล้ว ติดต่อผู้ดูแลเพื่อยกเลิก"); return; } }
+      if(!S.canEdit && act==="clear") return;
       if(act==="assign") await writeCell(tid,S.pop.sid,null);
       if(act==="clear") await writeCell(tid,S.pop.sid,{status:null,date:"",note:""});
       if(act==="unassign") await writeCell(tid,S.pop.sid,null,{unassign:true});
@@ -1292,7 +1297,7 @@ document.addEventListener("submit", async e=>{
     if(f.id==="groupForm"){ const g=$("#newGroup").value.trim(); if(!g) return;
       if(!allGroups().includes(g)) await S.db.doc("settings/groups").set({custom:[...S.customGroups,g]});
       S.addingGroup=false; S.group=g; render(); toast("เพิ่มกลุ่มงาน “"+g+"” แล้ว"); }
-    else if(f.id==="indForm"){ const code=$("#indCode").value.trim(), name=$("#indName").value.trim(); if(!name){ toast("ใส่ชื่อตัวชี้วัดก่อน"); return; }
+    else if(f.id==="indForm"){ const code=$("#indCode").value.trim(), name=$("#indName").value.trim(); if(!name && !code){ toast("ใส่รหัสหรือชื่อตัวชี้วัดอย่างน้อย 1 อย่าง"); return; }
       const group=await resolveGroup("indGroup","indOther"); if(!group){ toast("ระบุชื่อกลุ่มงานก่อน"); return; }
       await S.db.collection("indicators").add({fy:S.fy, group, code, name, created:Date.now()}); toast("เพิ่มตัวชี้วัด "+(code||name)+" ในกลุ่ม "+group+" แล้ว"); $("#indCode").value=""; $("#indName").value=""; }
     else if(f.id==="indEdit"){ const d=S.panel.draft; const group=await resolveGroup("eGroup","eOther"); if(!group){ toast("ระบุชื่อกลุ่มงานก่อน"); return; }

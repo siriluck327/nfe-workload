@@ -87,20 +87,45 @@ function doPost(e) {
   try { body = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, code: "bad", message: "ข้อมูลไม่ถูกต้อง" }); }
   try {
     if (body.action === "verify") return json_({ ok: true, admin: isAdmin_(body.pass), view: canView_(body.view) });
-    if (!isAdmin_(body.pass)) return json_({ ok: false, code: "auth", message: "รหัสผู้ดูแลไม่ถูกต้อง" });
+    const admin = isAdmin_(body.pass);
     if (body.action === "batch") {
-      const ops = (body.ops || []).filter(function (o) { return o && COLLECTIONS.indexOf(o.coll) >= 0 && /^[A-Za-z0-9_\-.~:@+]{1,200}$/.test(String(o.id)); });
+      let ops = (body.ops || []).filter(function (o) { return o && COLLECTIONS.indexOf(o.coll) >= 0 && /^[A-Za-z0-9_\-.~:@+]{1,200}$/.test(String(o.id)); });
+      if (!admin) {
+        const chk = publicAssignOps_(ops);
+        if (!chk.ok) return json_(chk);
+        ops = chk.ops;
+      }
       applyOps_(ops);
       try { refreshReadable_(); } catch (err) { console.error(err); }
       return json_({ ok: true, n: ops.length });
     }
-    if (body.action === "upload") return json_(upload_(body));
+    if (body.action === "upload") { if (!admin) return json_({ ok: false, code: "auth", message: "รหัสผู้ดูแลไม่ถูกต้อง" }); return json_(upload_(body)); }
     return json_({ ok: false, code: "bad", message: "ไม่รู้จักคำสั่ง" });
   } catch (err) {
     return json_({ ok: false, code: "error", message: String(err) });
   }
 }
 
+/* ผู้ใช้ทั่วไป (ไม่ใส่รหัส) แก้ได้อย่างเดียว: รายชื่อผู้รับผิดชอบของงาน และยกเลิกได้เฉพาะคนที่ยังไม่มีคะแนน
+ * ปิดความสามารถนี้ได้โดยตั้งคุณสมบัติของสคริปต์ PUBLIC_ASSIGN = false */
+function publicAssignOps_(ops) {
+  const deny = { ok: false, code: "auth", message: "ต้องเข้าสู่ระบบผู้ดูแลจึงจะแก้ไขส่วนนี้ได้" };
+  if (PropertiesService.getScriptProperties().getProperty("PUBLIC_ASSIGN") === "false") return deny;
+  const all = loadAll_().data; const out = [];
+  for (let n = 0; n < ops.length; n++) {
+    const o = ops[n];
+    if (o.coll !== "tasks" || o.op !== "update" || !o.data || !Array.isArray(o.data.assignees)) return deny;
+    const extra = Object.keys(o.data).filter(function (k) { return k !== "assignees" && k !== "updated"; });
+    if (extra.length) return deny;
+    const cur = all.tasks[o.id]; if (!cur) return { ok: false, code: "bad", message: "ไม่พบงาน" };
+    const next = o.data.assignees.map(String).filter(function (x, i, a) { return all.staff[x] && a.indexOf(x) === i; });
+    const removed = (cur.assignees || []).filter(function (x) { return next.indexOf(x) < 0; });
+    if (removed.some(function (x) { return ((cur.results || {})[x] || {}).status; }))
+      return { ok: false, code: "scored", message: "คนที่ให้คะแนนแล้ว ยกเลิกได้เฉพาะผู้ดูแลระบบ" };
+    out.push({ op: "update", coll: "tasks", id: o.id, data: { assignees: next, updated: Date.now() } });
+  }
+  return { ok: true, ops: out };
+}
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 function isAdmin_(pass) { const a = PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD"); return !!a && String(pass || "") === a; }
 function canView_(v) {
